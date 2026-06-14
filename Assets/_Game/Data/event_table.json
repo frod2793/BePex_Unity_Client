@@ -1,0 +1,104 @@
+{
+    "events": [
+        {
+            "eventId": "evt_new_639170573017184380",
+            "eventTitle": "목표 킬달성",
+            "eventDescription": "학살의 시작",
+            "eventIconAddress": "item_Sheet[item_Sheet_4]",
+            "startDate": "2026-06-14",
+            "endDate": "2026-06-21",
+            "condition": {
+                "conditionType": "KillCount",
+                "targetValue": 10
+            },
+            "rewards": [
+                {
+                    "rewardType": "SeasonPoint",
+                    "amount": 100,
+                    "displayName": "티티티케케ㅔ",
+                    "iconAddress": "item_Sheet[item_Sheet_4]"
+                }
+            ]
+        },
+        {
+            "eventId": "evt_new_639170824047511920",
+            "eventTitle": "20까지 도달",
+            "eventDescription": "목표 슷테이지 까지 도달하세요 ",
+            "eventIconAddress": "item_Sheet[item_Sheet_0]",
+            "startDate": "2026-06-15",
+            "endDate": "2026-06-22",
+            "condition": {
+                "conditionType": "StageClear",
+                "targetValue": 20
+            },
+            "rewards": [
+                {
+                    "rewardType": "Point",
+                    "amount": 100,
+                    "displayName": "포포포포",
+                    "iconAddress": "item_Sheet[item_Sheet_6]"
+                }
+            ]
+        },
+        {
+            "eventId": "evt_new_639170824410257390",
+            "eventTitle": "출석체크",
+            "eventDescription": "출석하면됨",
+            "eventIconAddress": "item_Sheet[item_Sheet_3]",
+            "startDate": "2026-06-15",
+            "endDate": "2026-06-22",
+            "condition": {
+                "conditionType": "Attendance",
+                "targetValue": 10
+            },
+            "rewards": [
+                {
+                    "rewardType": "Exp",
+                    "amount": 1000,
+                    "displayName": "경험치",
+                    "iconAddress": "item_Sheet[item_Sheet_0]"
+                }
+            ]
+        },
+        {
+            "eventId": "evt_new_639171278509044050",
+            "eventTitle": "시즌패스 ",
+            "eventDescription": "이벤트 설명을 입력하세요.",
+            "eventIconAddress": "item_Sheet[item_Sheet_0]",
+            "startDate": "2026-06-15",
+            "endDate": "2026-06-22",
+            "condition": {
+                "conditionType": "MonthEvent",
+                "targetValue": 10
+            },
+            "rewards": [
+                {
+                    "rewardType": "CreditReword",
+                    "amount": 1000,
+                    "displayName": "돈줄겡 ",
+                    "iconAddress": "item_Sheet[item_Sheet_0]"
+                }
+            ]
+        },
+        {
+            "eventId": "evt_new_639171514463304900",
+            "eventTitle": "랭킹이벤트",
+            "eventDescription": "10위 안에 드세요",
+            "eventIconAddress": "item_Sheet[item_Sheet_0]",
+            "startDate": "2026-06-15",
+            "endDate": "2026-06-22",
+            "condition": {
+                "conditionType": "RankingEvent",
+                "targetValue": 10
+            },
+            "rewards": [
+                {
+                    "rewardType": "Point",
+                    "amount": 100,
+                    "displayName": "이벤트 포인트",
+                    "iconAddress": "item_Sheet[item_Sheet_3]"
+                }
+            ]
+        }
+    ]
+}

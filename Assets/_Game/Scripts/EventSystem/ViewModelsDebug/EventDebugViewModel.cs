@@ -1,6 +1,7 @@
 using UnityEngine;
 using BePex.EventSystem.Models;
 using BePex.EventSystem.Interfaces;
+using BePex.EventSystem.DTOs;
 
 namespace BePex.EventSystem.ViewModelsDebug
 {
@@ -44,6 +45,18 @@ namespace BePex.EventSystem.ViewModelsDebug
             {
                 await m_eventModel.Debug_AddProgressAsync(eventId, amount, m_saveSystem);
             }
+        }
+
+        /// <summary>
+        /// [기능]: 현재 로드된 활성 이벤트 목록을 반환합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 추가
+        /// </summary>
+        public System.Collections.Generic.List<EventDefinitionDTO> GetActiveEvents()
+        {
+            return m_eventModel != null ? m_eventModel.GetActiveEvents() : new System.Collections.Generic.List<EventDefinitionDTO>();
         }
 
         /// <summary>

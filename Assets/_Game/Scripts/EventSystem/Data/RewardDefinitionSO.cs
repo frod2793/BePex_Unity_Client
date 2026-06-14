@@ -18,7 +18,13 @@ namespace BePex.EventSystem.Data
             [EventDisplayName("티켓")]
             Ticket,
             [EventDisplayName("이벤트 포인트")]
-            Point
+            Point,
+            [EventDisplayName("시즌 포인트")]
+            SeasonPoint,
+            [EventDisplayName("재화 보상")]
+            CreditReword
+        
+        
         }
         #endregion
 

@@ -139,17 +139,37 @@ namespace BePex.EventSystem.Views
 
             if (m_descText != null)
             {
-                m_descText.text = def.eventDescription;
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine(def.eventDescription);
+                sb.AppendLine();
+                sb.AppendLine("🎁 획득 가능 보상:");
+                
+                if (def.rewards != null && def.rewards.Count > 0)
+                {
+                    for (int i = 0; i < def.rewards.Count; i++)
+                    {
+                        sb.AppendLine(string.Format("- {0} x{1}", def.rewards[i].displayName, def.rewards[i].amount));
+                    }
+                }
+                else
+                {
+                    sb.AppendLine("- 없음");
+                }
+                
+                m_descText.text = sb.ToString();
             }
 
             var (cur, tar, ratio) = await m_viewModel.GetProgressInfoAsync();
             if (m_progressText != null)
             {
-                m_progressText.text = $"{cur} / {tar}";
+                int percent = Mathf.RoundToInt(ratio * 100f);
+                m_progressText.text = string.Format("{0} / {1} ({2}%)", cur, tar, percent);
             }
 
             if (m_progressSlider != null)
             {
+                m_progressSlider.minValue = 0f;
+                m_progressSlider.maxValue = 1f;
                 m_progressSlider.value = ratio;
             }
 

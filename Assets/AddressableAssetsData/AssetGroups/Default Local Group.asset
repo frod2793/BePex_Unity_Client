@@ -20,6 +20,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6766478349c5e47f3820c6e08c9866b8
+    m_Address: EventTableJson
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9899780c0fb8c4248a59900bbb9d275f
     m_Address: Assets/_Game/EventItemCell.prefab
     m_ReadOnly: 0

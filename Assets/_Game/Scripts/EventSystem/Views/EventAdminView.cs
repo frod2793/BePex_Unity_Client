@@ -327,11 +327,12 @@ namespace BePex.EventSystem.Views
         /// </summary>
         private void func_RenderRewards(List<RewardDefinitionDTO> rewards)
         {
-            for (int i = 0; i < m_spawnedRewardRows.Count; i++)
+            // 기존 스폰된 모든 자식 오브젝트 소거 (메모리 누수 및 오정렬 방지)
+            if (m_rewardListContent != null)
             {
-                if (m_spawnedRewardRows[i] != null)
+                for (int i = m_rewardListContent.childCount - 1; i >= 0; i--)
                 {
-                    Destroy(m_spawnedRewardRows[i].gameObject);
+                    Destroy(m_rewardListContent.GetChild(i).gameObject);
                 }
             }
             m_spawnedRewardRows.Clear();

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 611155d7de1484b95a339f25f6da5202, type: 3}
+  m_Name: Mock_Event_001
+  m_EditorClassIdentifier: Assembly-CSharp::BePex.EventSystem.Data.EventDefinitionSO
+  m_eventId: test_event_001
+  m_eventTitle: "\uD14C\uC2A4\uD2B8 \uCC98\uCE58 \uC774\uBCA4\uD2B8"
+  m_eventDescription: "\uC801\uC744 \uCC98\uCE58\uD558\uC5EC \uBCF4\uC0C1\uC744 \uD68D\uB4DD\uD558\uC138\uC694."
+  m_eventIcon: {fileID: 0}
+  m_startDate: 2026-06-01
+  m_endDate: 2026-06-30
+  m_condition: {fileID: 11400000, guid: 10000000000000000000000000000001, type: 2}
+  m_rewards:
+  - {fileID: 11400000, guid: 10000000000000000000000000000002, type: 2}

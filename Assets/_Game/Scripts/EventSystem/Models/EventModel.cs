@@ -22,6 +22,7 @@ namespace BePex.EventSystem.Models
         private readonly List<EventDefinitionDTO> m_activeEvents;
         private readonly Dictionary<string, IEventCondition> m_conditions;
         private readonly Dictionary<string, List<IEventReward>> m_rewards;
+        private readonly ITimeProvider m_timeProvider;
         #endregion
 
         #region 이벤트 (Observer)
@@ -31,17 +32,18 @@ namespace BePex.EventSystem.Models
 
         #region 초기화
         /// <summary>
-        /// [기능]: 테이블 DTO 데이터 및 팩토리 인스턴스를 수동 DI 주입받고 초기 이벤트를 캐싱 처리하는 생성자.
+        /// [기능]: 테이블 DTO 데이터 및 팩토리 인스턴스, ITimeProvider를 수동 DI 주입받고 초기 이벤트를 캐싱 처리하는 생성자.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: ScriptableObject 의존성을 EventTableDTO로 교체
+        /// [수정 내용]: ITimeProvider 의존성 주입 추가
         /// </summary>
-        public EventModel(EventTableDTO eventTable, ConditionFactory conditionFactory, RewardFactory rewardFactory)
+        public EventModel(EventTableDTO eventTable, ConditionFactory conditionFactory, RewardFactory rewardFactory, ITimeProvider timeProvider)
         {
             m_eventTable = eventTable;
             m_conditionFactory = conditionFactory;
             m_rewardFactory = rewardFactory;
+            m_timeProvider = timeProvider;
 
             m_activeEvents = new List<EventDefinitionDTO>();
             m_conditions = new Dictionary<string, IEventCondition>();
@@ -105,13 +107,43 @@ namespace BePex.EventSystem.Models
         }
 
         /// <summary>
-        /// [기능]: 로드되어 활성화된 모든 이벤트 정의 리스트를 반환합니다.
+        /// [기능]: 로드되어 활성화된 모든 이벤트 정의 리스트 중 현재 시간(ITimeProvider 기준)에 유효한 이벤트만 필터링하여 반환합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 반환 목록 타입을 DTO 제네릭 리스트로 변경
+        /// [수정 내용]: startDate 및 endDate를 기반으로 기간 만료 체크 필터링 로직 추가
         /// </summary>
-        public List<EventDefinitionDTO> GetActiveEvents() => m_activeEvents;
+        public List<EventDefinitionDTO> GetActiveEvents()
+        {
+            if (m_timeProvider == null) return m_activeEvents;
+            DateTime currentTime = m_timeProvider.GetCurrentTime();
+            var validEvents = new List<EventDefinitionDTO>();
+
+            for (int i = 0; i < m_activeEvents.Count; i++)
+            {
+                var evt = m_activeEvents[i];
+                bool isValid = true;
+
+                if (!string.IsNullOrEmpty(evt.startDate) && DateTime.TryParse(evt.startDate, out DateTime startDt))
+                {
+                    if (currentTime < startDt) isValid = false;
+                }
+
+                if (!string.IsNullOrEmpty(evt.endDate) && DateTime.TryParse(evt.endDate, out DateTime endDt))
+                {
+                    // endDate의 자정(0시 0분)까지를 기한으로 간주한다면, 보통 끝나는 날의 23:59:59를 포함시키기 위해 Date 비교만 수행하거나 시간을 추가 처리합니다.
+                    // 단순화를 위해 endDt에 +1일 하여 그 전까지 유효하다고 칩니다 (예: 6월 7일까지면 6월 8일 0시 전까지).
+                    if (currentTime >= endDt.Date.AddDays(1)) isValid = false;
+                }
+
+                if (isValid)
+                {
+                    validEvents.Add(evt);
+                }
+            }
+
+            return validEvents;
+        }
 
         /// <summary>
         /// [기능]: 특정 이벤트에 매핑된 조건 객체를 찾아 반환합니다.
@@ -160,9 +192,15 @@ namespace BePex.EventSystem.Models
             }
 
             var progress = await saveSystem.LoadProgressAsync(eventId);
-            progress.currentProgress += amount;
-
             var cond = GetCondition(eventId);
+            if (cond != null && !cond.CanAddProgress(progress))
+            {
+                return;
+            }
+
+            progress.currentProgress += amount;
+            progress.lastUpdatedTicks = m_timeProvider != null ? m_timeProvider.GetCurrentTime().Ticks : System.DateTime.Now.Ticks;
+
             if (cond != null && progress.currentProgress >= cond.GetTargetValue())
             {
                 progress.isCompleted = true;

@@ -19,8 +19,8 @@ namespace BePex.EventSystem.Conditions
         /// [마지막 수정 작성자]: 윤승종
         /// [수정 내용]: 최초 작성
         /// </summary>
-        public MonthEventCondition(int targetValue, ISaveSystem saveSystem, string eventId)
-            : base(targetValue, saveSystem, eventId)
+        public MonthEventCondition(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId)
+            : base(targetValue, saveSystem, timeProvider, eventId)
         {
         }
         #endregion

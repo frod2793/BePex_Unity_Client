@@ -12,7 +12,7 @@ namespace BePex.EventSystem.ViewModels
     /// [기능]: 활성화된 이벤트들의 목록 갱신 및 선택 상호작용 상태를 전달하기 위한 ViewModel 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    public class EventListViewModel
+    public class EventListViewModel : IDisposable
     {
         #region 내부 필드
         private readonly EventModel m_eventModel;
@@ -132,6 +132,21 @@ namespace BePex.EventSystem.ViewModels
         private void HandleEventRewardClaimed(string eventId)
         {
             OnListUpdated?.Invoke();
+        }
+        /// <summary>
+        /// [기능]: 메모리 누수 방지를 위한 이벤트 언구독 로직.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: IDisposable 구현
+        /// </summary>
+        public void Dispose()
+        {
+            if (m_eventModel != null)
+            {
+                m_eventModel.OnEventProgressChanged -= HandleEventProgressChanged;
+                m_eventModel.OnEventRewardClaimed -= HandleEventRewardClaimed;
+            }
         }
         #endregion
     }

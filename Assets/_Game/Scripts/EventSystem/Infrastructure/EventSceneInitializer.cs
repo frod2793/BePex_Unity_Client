@@ -35,27 +35,10 @@ namespace BePex.EventSystem.Infrastructure
         [SerializeField] private string m_eventJsonAddress = "EventTableJson";
         #endregion
 
-        #region 내부 필드
-        private EventDebugViewModel m_debugVM;
-        #endregion
-
         #region 유니티 생명주기
         private async void Start()
         {
             await InitializeAsync();
-        }
-
-        /// <summary>
-        /// [기능]: 씬 소멸 시 생성된 디버그 뷰모델의 라이프사이클 리소스를 안전하게 정리해 줍니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        private void OnDestroy()
-        {
-            if (m_debugVM != null)
-            {
-                m_debugVM.Dispose();
-                m_debugVM = null;
-            }
         }
         #endregion
 
@@ -65,12 +48,14 @@ namespace BePex.EventSystem.Infrastructure
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 디버그 모드 여부와 관계없이 항상 JsonSaveSystem을 주입하도록 변경하여 씬 재시작 시 데이터 유지 보장
+        /// [수정 내용]: EventDetailViewModel 생성자에 playerReward를 넘겨주도록 DI 조립 변경
         /// </summary>
         private async Awaitable InitializeAsync()
         {
             // 1단계: 디버그 옵션에 따른 저장 장치 및 시간 제공자 선택
-            ISaveSystem saveSystem = new JsonSaveSystem();
+            ISaveSystem saveSystem = (m_useDebugMode && m_debugView != null) 
+                ? new InMemorySaveSystem() 
+                : new JsonSaveSystem();
                 
             ITimeProvider timeProvider = (m_useDebugMode && m_debugView != null)
                 ? new BePex.EventSystem.Infrastructure.DebugTimeProvider()
@@ -106,9 +91,9 @@ namespace BePex.EventSystem.Infrastructure
             var eventModel = new EventModel(eventTableDTO, condFactory, rewFactory, timeProvider);
 
             // 6단계: MVVM ViewModels 수동 생성자 주입 생성
-            var listVM = new EventListViewModel(eventModel, saveSystem);
+            var listVM = new EventListViewModel(eventModel);
             var detailVM = new EventDetailViewModel(eventModel, saveSystem, playerReward);
-            var popupVM = new RewardPopupViewModel(playerReward, saveSystem, eventModel);
+            var popupVM = new RewardPopupViewModel(playerReward, saveSystem);
             var hudVM = new CurrencyHUDViewModel(playerReward);
 
             // 보상 데이터 변경에 따른 상단 HUD 동기화 이벤트 체이닝
@@ -141,8 +126,8 @@ namespace BePex.EventSystem.Infrastructure
             // 8단계: [디버그 전용] 디버그 모드가 켜져 있고 조작 뷰가 연결된 경우 바인딩 처리
             if (m_useDebugMode && m_debugView != null)
             {
-                m_debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM);
-                m_debugView.Bind(m_debugVM);
+                var debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM);
+                m_debugView.Bind(debugVM);
                 m_debugView.gameObject.SetActive(true);
             }
             else if (m_debugView != null)

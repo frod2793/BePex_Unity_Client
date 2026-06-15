@@ -1,10 +1,12 @@
 using NUnit.Framework;
+using System;
 using System.Threading.Tasks;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Models;
 using BePex.EventSystem.Factories;
 using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.Infrastructure;
+using BePex.EventSystem.Interfaces;
 using UnityEngine;
 
 namespace BePex.EventSystem.Tests
@@ -15,10 +17,11 @@ namespace BePex.EventSystem.Tests
     /// </summary>
     public class EventSystemTests
     {
-        #region 테스트 대상 및 팩토리 필드
+        #region 내부 필드 (Private Fields)
         private JsonSaveSystem m_saveSystem;
         private ConditionFactory m_condFactory;
         private RewardFactory m_rewFactory;
+        private ITimeProvider m_timeProvider;
         #endregion
 
         #region 초기화 및 셋업
@@ -33,7 +36,8 @@ namespace BePex.EventSystem.Tests
         public void Setup()
         {
             m_saveSystem = new JsonSaveSystem();
-            m_condFactory = new ConditionFactory(m_saveSystem);
+            m_timeProvider = new BePex.EventSystem.Infrastructure.DebugTimeProvider();
+            m_condFactory = new ConditionFactory(m_saveSystem, m_timeProvider);
             m_rewFactory = new RewardFactory();
         }
         #endregion
@@ -53,7 +57,7 @@ namespace BePex.EventSystem.Tests
             tableDTO.events.Add(new EventDefinitionDTO { eventId = "evt_01", eventTitle = "테스트 1" });
             tableDTO.events.Add(new EventDefinitionDTO { eventId = "evt_02", eventTitle = "테스트 2" });
 
-            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory);
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
             var listVM = new EventListViewModel(model);
 
             int count = listVM.GetEvents().Count;
@@ -72,9 +76,9 @@ namespace BePex.EventSystem.Tests
         /// <summary>
         /// [기능]: 2. 이벤트 진행도 표시 검증
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 완료 로그 입력값/출력값 한글 표기 반영
+        /// [수정 내용]: EventDetailViewModel 생성자 의존성 변경 반영
         /// </summary>
         [Test]
         public async Task Test_02_EventProgress_Display()
@@ -87,8 +91,9 @@ namespace BePex.EventSystem.Tests
                 condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 10 } 
             });
 
-            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory);
-            var detailVM = new EventDetailViewModel(model, m_saveSystem);
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
+            var playerReward = new PlayerRewardModel();
+            var detailVM = new EventDetailViewModel(model, m_saveSystem, playerReward);
 
             detailVM.SetEvent("evt_progress");
             await model.Debug_AddProgressAsync("evt_progress", 4, m_saveSystem);
@@ -122,7 +127,7 @@ namespace BePex.EventSystem.Tests
                 condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 10 } 
             });
 
-            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory);
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
             var condition = model.GetCondition("evt_complete");
 
             await model.Debug_AddProgressAsync("evt_complete", 10, m_saveSystem);
@@ -155,7 +160,7 @@ namespace BePex.EventSystem.Tests
             ev.rewards.Add(new RewardDefinitionDTO { rewardType = "Exp", amount = 100, displayName = "경험치" });
             tableDTO.events.Add(ev);
 
-            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory);
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
             var playerReward = new PlayerRewardModel();
 
             await model.Debug_AddProgressAsync("evt_claim", 5, m_saveSystem);
@@ -190,7 +195,7 @@ namespace BePex.EventSystem.Tests
             ev.rewards.Add(new RewardDefinitionDTO { rewardType = "Point", amount = 50, displayName = "포인트" });
             tableDTO.events.Add(ev);
 
-            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory);
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
             var playerReward = new PlayerRewardModel();
 
             await model.Debug_AddProgressAsync("evt_point", 5, m_saveSystem);
@@ -254,7 +259,7 @@ namespace BePex.EventSystem.Tests
             ev.rewards.Add(new RewardDefinitionDTO { rewardType = "Ticket", amount = 1, displayName = "티켓" });
             tableDTO.events.Add(ev);
 
-            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory);
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
             var playerReward = new PlayerRewardModel();
 
             await model.Debug_AddProgressAsync("evt_dup", 5, m_saveSystem);
@@ -458,6 +463,125 @@ namespace BePex.EventSystem.Tests
             Debug.Log($"[EventSystemTests] [Test_13_EventAdminVM_Validation] " +
                       $"입력값: 이벤트 제목을 공란으로 설정 후 Firebase 업로드 시도 | " +
                       $"출력값: 업로드 성공 여부={result} (False 기대)");
+        }
+        /// <summary>
+        /// [기능]: 14. 날짜 변경/출석 이벤트 조건 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public async Task Test_14_AttendanceEvent_Calculation()
+        {
+            await m_saveSystem.ClearAllAsync();
+            var tableDTO = new EventTableDTO();
+            tableDTO.events.Add(new EventDefinitionDTO 
+            { 
+                eventId = "evt_attendance", 
+                condition = new ConditionDefinitionDTO { conditionType = "Attendance", targetValue = 3 } 
+            });
+
+            var debugTime = m_timeProvider as BePex.EventSystem.Infrastructure.DebugTimeProvider;
+            if (debugTime != null)
+            {
+                debugTime.ResetOffset();
+            }
+
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
+            var condition = model.GetCondition("evt_attendance");
+
+            await model.Debug_AddProgressAsync("evt_attendance", 1, m_saveSystem);
+            bool isCompleted1 = await condition.IsCompletedAsync();
+            
+            if (debugTime != null)
+            {
+                debugTime.AddDays(1);
+            }
+
+            await model.Debug_AddProgressAsync("evt_attendance", 2, m_saveSystem);
+            bool isCompleted2 = await condition.IsCompletedAsync();
+
+            Debug.Log($"[EventSystemTests] [Test_14_AttendanceEvent_Calculation] " +
+                      $"입력값: 목표 출석=3, 누적 출석=1 -> 3 | " +
+                      $"출력값: 1회 출석 완료여부={isCompleted1}, 3회 출석 완료여부={isCompleted2}");
+
+            Assert.IsFalse(isCompleted1);
+            Assert.IsTrue(isCompleted2);
+        }
+
+        /// <summary>
+        /// [기능]: 15. 스테이지 클리어 조건 달성 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public async Task Test_15_StageClearCondition_Validation()
+        {
+            await m_saveSystem.ClearAllAsync();
+            var tableDTO = new EventTableDTO();
+            tableDTO.events.Add(new EventDefinitionDTO 
+            { 
+                eventId = "evt_stage", 
+                condition = new ConditionDefinitionDTO { conditionType = "StageClear", targetValue = 5 } 
+            });
+
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
+            var condition = model.GetCondition("evt_stage");
+
+            await model.Debug_AddProgressAsync("evt_stage", 5, m_saveSystem);
+            bool isCompleted = await condition.IsCompletedAsync();
+
+            Debug.Log($"[EventSystemTests] [Test_15_StageClearCondition_Validation] " +
+                      $"입력값: 목표 스테이지 클리어 횟수=5, 진행도=5 | " +
+                      $"출력값: 달성 여부={isCompleted}");
+
+            Assert.IsTrue(isCompleted);
+        }
+
+        /// <summary>
+        /// [기능]: 16. ViewModel 생성 및 해제 후 메모리 누수 방지(Unsubscribe) 테스트
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public void Test_16_ViewModel_MemoryLeak_Check()
+        {
+            var tableDTO = new EventTableDTO();
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
+            
+            var listVM = new EventListViewModel(model);
+            int callCount = 0;
+            listVM.OnListUpdated += () => { callCount++; };
+
+            if (listVM is IDisposable disposableVM)
+            {
+                disposableVM.Dispose();
+            }
+
+            // Reflection을 통해 OnEventProgressChanged 강제 호출
+            var eventField = typeof(EventModel).GetField("OnEventProgressChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (eventField != null)
+            {
+                var eventDelegate = (MulticastDelegate)eventField.GetValue(model);
+                if (eventDelegate != null)
+                {
+                    foreach (var handler in eventDelegate.GetInvocationList())
+                    {
+                        handler.Method.Invoke(handler.Target, new object[] { "test_event" });
+                    }
+                }
+            }
+
+            Debug.Log($"[EventSystemTests] [Test_16_ViewModel_MemoryLeak_Check] " +
+                      $"입력값: ViewModel Dispose 후 EventModel 통지 시뮬레이션 | " +
+                      $"출력값: 콜백 호출 횟수={callCount} (0이어야 메모리 누수 없음)");
+
+            Assert.AreEqual(0, callCount);
         }
         #endregion
     }

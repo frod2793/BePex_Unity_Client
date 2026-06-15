@@ -11,6 +11,7 @@ using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Data;
 using BePex.EventSystem.Utils;
+using BePex.EventSystem.Factories;
 using System;
 
 namespace BePex.EventSystem.Views
@@ -41,8 +42,10 @@ namespace BePex.EventSystem.Views
         [SerializeField] private TMP_InputField m_titleInput;
         // 이벤트 상세 설명 입력 필드
         [SerializeField] private TMP_InputField m_descInput;
-        // 이벤트 아이콘 스프라이트의 어드레서블 주소 입력 필드
-        [SerializeField] private TMP_InputField m_iconAddressInput;
+        // 이벤트 아이콘 스프라이트의 어드레서블 주소 선택 드롭다운 (item_Sheet)
+        [SerializeField] private TMP_Dropdown m_iconAddressDropdown;
+        // 이벤트 아이콘 썸네일 프리뷰 이미지
+        [SerializeField] private Image m_iconAddressPreview;
         // 이벤트 시작 일시 입력 필드 (yyyy-MM-dd)
         [SerializeField] private TMP_InputField m_startDateInput;
         // 이벤트 종료 일시 입력 필드 (yyyy-MM-dd)
@@ -66,7 +69,8 @@ namespace BePex.EventSystem.Views
         [SerializeField] private TMP_Dropdown m_newRewardTypeDropdown;
         [SerializeField] private TMP_InputField m_newRewardAmountInput;
         [SerializeField] private TMP_InputField m_newRewardNameInput;
-        [SerializeField] private TMP_InputField m_newRewardIconInput;
+        [SerializeField] private TMP_Dropdown m_newRewardIconDropdown;
+        [SerializeField] private Image m_newRewardIconPreview;
         #endregion
 
         #region UI 참조 (Inspector) - 제어 바 & 상태 메시지
@@ -122,6 +126,22 @@ namespace BePex.EventSystem.Views
                 m_newRewardTypeDropdown.ClearOptions();
                 var options = EnumDisplayHelper.GetDisplayNames<RewardDefinitionSO.RewardType>();
                 m_newRewardTypeDropdown.AddOptions(options);
+            }
+
+            if (m_iconAddressDropdown != null)
+            {
+                m_iconAddressDropdown.onValueChanged.RemoveAllListeners();
+                m_iconAddressDropdown.ClearOptions();
+                m_iconAddressDropdown.AddOptions(GetIconDropdownOptions());
+            }
+
+            if (m_newRewardIconDropdown != null)
+            {
+                m_newRewardIconDropdown.onValueChanged.RemoveAllListeners();
+                m_newRewardIconDropdown.ClearOptions();
+                m_newRewardIconDropdown.AddOptions(GetIconDropdownOptions());
+                m_newRewardIconDropdown.onValueChanged.AddListener(func_OnNewRewardIconDropdownChangedWrapper);
+                func_UpdateNewRewardThumbnailWrapper(m_newRewardIconDropdown.value);
             }
 
             if (m_addEventButton != null)
@@ -276,9 +296,11 @@ namespace BePex.EventSystem.Views
             {
                 m_descInput.text = selected.eventDescription;
             }
-            if (m_iconAddressInput != null)
+            if (m_iconAddressDropdown != null)
             {
-                m_iconAddressInput.text = selected.eventIconAddress;
+                int iconIdx = ParseIconIndex(selected.eventIconAddress);
+                m_iconAddressDropdown.value = iconIdx;
+                func_UpdateIconAddressThumbnailWrapper(iconIdx);
             }
             if (m_startDateInput != null)
             {
@@ -497,10 +519,10 @@ namespace BePex.EventSystem.Views
                 {
                     displayNameField = m_newRewardTypeDropdown != null ? m_newRewardTypeDropdown.options[m_newRewardTypeDropdown.value].text : "보상";
                 }
-                string iconAddress = m_newRewardIconInput != null ? m_newRewardIconInput.text : "UI/Icons/Default";
-                if (string.IsNullOrEmpty(iconAddress))
+                string iconAddress = "item_Sheet[item_Sheet_0]";
+                if (m_newRewardIconDropdown != null)
                 {
-                    iconAddress = "UI/Icons/Default";
+                    iconAddress = m_newRewardIconDropdown.options[m_newRewardIconDropdown.value].text;
                 }
 
                 var newRew = new RewardDefinitionDTO
@@ -523,9 +545,10 @@ namespace BePex.EventSystem.Views
                 {
                     m_newRewardNameInput.text = string.Empty;
                 }
-                if (m_newRewardIconInput != null)
+                if (m_newRewardIconDropdown != null)
                 {
-                    m_newRewardIconInput.text = string.Empty;
+                    m_newRewardIconDropdown.value = 0;
+                    func_UpdateNewRewardThumbnailWrapper(0);
                 }
             }
         }
@@ -593,9 +616,9 @@ namespace BePex.EventSystem.Views
             {
                 m_descInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
             }
-            if (m_iconAddressInput != null)
+            if (m_iconAddressDropdown != null)
             {
-                m_iconAddressInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
+                m_iconAddressDropdown.onValueChanged.AddListener(func_OnIconAddressDropdownChangedWrapper);
             }
             if (m_startDateInput != null)
             {
@@ -636,9 +659,9 @@ namespace BePex.EventSystem.Views
             {
                 m_descInput.onEndEdit.RemoveAllListeners();
             }
-            if (m_iconAddressInput != null)
+            if (m_iconAddressDropdown != null)
             {
-                m_iconAddressInput.onEndEdit.RemoveAllListeners();
+                m_iconAddressDropdown.onValueChanged.RemoveAllListeners();
             }
             if (m_startDateInput != null)
             {
@@ -706,7 +729,9 @@ namespace BePex.EventSystem.Views
                 eventId = m_eventIdInput != null ? m_eventIdInput.text : selected.eventId,
                 eventTitle = m_titleInput != null ? m_titleInput.text : selected.eventTitle,
                 eventDescription = m_descInput != null ? m_descInput.text : selected.eventDescription,
-                eventIconAddress = m_iconAddressInput != null ? m_iconAddressInput.text : selected.eventIconAddress,
+                eventIconAddress = m_iconAddressDropdown != null 
+                    ? m_iconAddressDropdown.options[m_iconAddressDropdown.value].text 
+                    : selected.eventIconAddress,
                 startDate = m_startDateInput != null ? m_startDateInput.text : selected.startDate,
                 endDate = m_endDateInput != null ? m_endDateInput.text : selected.endDate,
                 condition = new ConditionDefinitionDTO
@@ -720,6 +745,114 @@ namespace BePex.EventSystem.Views
             };
 
             m_viewModel.UpdateSelectedEvent(updated);
+        }
+        #endregion
+
+        #region 헬퍼 메서드 및 썸네일 제어
+        /// <summary>
+        /// [기능]: 드롭다운 옵션 목록 데이터를 구성하여 반환합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private List<TMP_Dropdown.OptionData> GetIconDropdownOptions()
+        {
+            var options = new List<TMP_Dropdown.OptionData>();
+            for (int i = 0; i <= 20; i++)
+            {
+                options.Add(new TMP_Dropdown.OptionData($"item_Sheet[item_Sheet_{i}]"));
+            }
+            return options;
+        }
+
+        /// <summary>
+        /// [기능]: 어드레서블 주소 문자열로부터 item_Sheet 인덱스를 안전하게 추출합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private int ParseIconIndex(string address)
+        {
+            if (string.IsNullOrEmpty(address))
+            {
+                return 0;
+            }
+            try
+            {
+                int openBracket = address.IndexOf('[');
+                int closeBracket = address.IndexOf(']');
+                if (openBracket != -1 && closeBracket != -1 && closeBracket > openBracket)
+                {
+                    string subAsset = address.Substring(openBracket + 1, closeBracket - openBracket - 1);
+                    string indexStr = subAsset.Replace("item_Sheet_", "");
+                    if (int.TryParse(indexStr, out int idx))
+                    {
+                        return idx;
+                    }
+                }
+                else
+                {
+                    string indexStr = address.Replace("item_Sheet_", "");
+                    if (int.TryParse(indexStr, out int idx))
+                    {
+                        return idx;
+                    }
+                }
+            }
+            catch
+            {
+                // 예외 발생 시 기본값 0
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// [기능]: 지정한 인덱스의 스프라이트를 로딩하여 썸네일에 실시간 갱신합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async Awaitable UpdateThumbnailAsync(int index, Image targetImage)
+        {
+            if (targetImage != null)
+            {
+                Sprite sprite = await ItemSpriteMapper.GetItemSpriteAsync(index);
+                if (targetImage != null)
+                {
+                    targetImage.sprite = sprite;
+                }
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 상세 편집창의 아이콘 드롭다운 값 변경 시 썸네일 업데이트를 수행하는 비동기 래퍼.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async void func_OnIconAddressDropdownChangedWrapper(int index)
+        {
+            await UpdateThumbnailAsync(index, m_iconAddressPreview);
+            func_SubmitFormChanges();
+        }
+
+        /// <summary>
+        /// [기능]: 신규 보상 추가창의 아이콘 드롭다운 값 변경 시 썸네일 업데이트를 수행하는 비동기 래퍼.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async void func_OnNewRewardIconDropdownChangedWrapper(int index)
+        {
+            await UpdateThumbnailAsync(index, m_newRewardIconPreview);
+        }
+
+        /// <summary>
+        /// [기능]: 동기 맥락에서 호출하기 위한 신규 보상 아이콘 썸네일 비동기 실행기.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async void func_UpdateNewRewardThumbnailWrapper(int index)
+        {
+            await UpdateThumbnailAsync(index, m_newRewardIconPreview);
+        }
+
+        /// <summary>
+        /// [기능]: 동기 맥락에서 호출하기 위한 상세 편집 아이콘 썸네일 비동기 실행기.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async void func_UpdateIconAddressThumbnailWrapper(int index)
+        {
+            await UpdateThumbnailAsync(index, m_iconAddressPreview);
         }
         #endregion
     }

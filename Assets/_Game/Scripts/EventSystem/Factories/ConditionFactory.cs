@@ -17,20 +17,22 @@ namespace BePex.EventSystem.Factories
     {
         #region 내부 필드
         private readonly ISaveSystem m_saveSystem;
+        private readonly ITimeProvider m_timeProvider;
         private readonly Dictionary<ConditionDefinitionSO.ConditionType, Type> m_registry;
         #endregion
 
         #region 초기화
         /// <summary>
-        /// [기능]: 영속성 세이브 모듈 주입 및 리플렉션을 통한 조건 클래스 자동 등록을 수행합니다.
+        /// [기능]: 영속성 세이브 모듈과 시간 제공자를 주입받고 리플렉션을 통한 조건 클래스 자동 등록을 수행합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Reflection 기반 자동화 팩토리로 개편
+        /// [수정 내용]: ITimeProvider 의존성 주입 추가
         /// </summary>
-        public ConditionFactory(ISaveSystem saveSystem)
+        public ConditionFactory(ISaveSystem saveSystem, ITimeProvider timeProvider)
         {
             m_saveSystem = saveSystem;
+            m_timeProvider = timeProvider;
             m_registry = new Dictionary<ConditionDefinitionSO.ConditionType, Type>();
             BuildRegistry();
         }
@@ -63,9 +65,9 @@ namespace BePex.EventSystem.Factories
         /// <summary>
         /// [기능]: 조건 SO 정의 파일 및 이벤트 ID를 토대로 레지스트리에 매핑된 타입의 인스턴스를 동적 생성합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Reflection 레지스트리 기반으로 생성 방식 갱신
+        /// [수정 내용]: CreateInternal 헬퍼 메서드로 생성 위임 리팩토링
         /// </summary>
         public IEventCondition Create(ConditionDefinitionSO definition, string eventId)
         {
@@ -74,21 +76,15 @@ namespace BePex.EventSystem.Factories
                 return null;
             }
 
-            if (m_registry.TryGetValue(definition.Type, out Type conditionType))
-            {
-                return (IEventCondition)Activator.CreateInstance(conditionType, definition.TargetValue, m_saveSystem, eventId);
-            }
-
-            Debug.LogError($"[ConditionFactory] 매핑되지 않은 조건 타입: {definition.Type}");
-            return null;
+            return CreateInternal(definition.Type, definition.TargetValue, eventId);
         }
 
         /// <summary>
         /// [기능]: 조건 DTO 데이터를 토대로 레지스트리에 매핑된 타입의 인스턴스를 동적 생성합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: DTO 지원을 위해 문자열 매핑 로직을 추가하여 작성
+        /// [수정 내용]: CreateInternal 헬퍼 메서드로 생성 위임 리팩토링
         /// </summary>
         public IEventCondition Create(ConditionDefinitionDTO definition, string eventId)
         {
@@ -99,13 +95,30 @@ namespace BePex.EventSystem.Factories
 
             if (Enum.TryParse(definition.conditionType, out ConditionDefinitionSO.ConditionType typeEnum))
             {
-                if (m_registry.TryGetValue(typeEnum, out Type conditionType))
-                {
-                    return (IEventCondition)Activator.CreateInstance(conditionType, definition.targetValue, m_saveSystem, eventId);
-                }
+                return CreateInternal(typeEnum, definition.targetValue, eventId);
             }
 
             Debug.LogError($"[ConditionFactory] 매핑되지 않은 조건 타입: {definition.conditionType}");
+            return null;
+        }
+        #endregion
+
+        #region 내부 메서드
+        /// <summary>
+        /// [기능]: 등록된 어셈블리 맵에서 조건 타입을 찾아 IEventCondition 객체로 실질 생성 및 반환합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        private IEventCondition CreateInternal(ConditionDefinitionSO.ConditionType type, int targetValue, string eventId)
+        {
+            if (m_registry.TryGetValue(type, out Type conditionType))
+            {
+                return (IEventCondition)Activator.CreateInstance(conditionType, targetValue, m_saveSystem, m_timeProvider, eventId);
+            }
+
+            Debug.LogError($"[ConditionFactory] 매핑되지 않은 조건 타입: {type}");
             return null;
         }
         #endregion

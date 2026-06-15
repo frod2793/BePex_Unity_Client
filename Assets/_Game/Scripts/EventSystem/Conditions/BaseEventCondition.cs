@@ -13,6 +13,7 @@ namespace BePex.EventSystem.Conditions
         #region 내부 필드
         protected readonly int m_targetValue;
         protected readonly ISaveSystem m_saveSystem;
+        protected readonly ITimeProvider m_timeProvider;
         protected readonly string m_eventId;
         #endregion
 
@@ -20,14 +21,15 @@ namespace BePex.EventSystem.Conditions
         /// <summary>
         /// [기능]: 기반 조건 인스턴스에 필요한 의존성을 주입받아 초기화합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: ITimeProvider 의존성 주입 추가
         /// </summary>
-        protected BaseEventCondition(int targetValue, ISaveSystem saveSystem, string eventId)
+        protected BaseEventCondition(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId)
         {
             m_targetValue = targetValue;
             m_saveSystem = saveSystem;
+            m_timeProvider = timeProvider;
             m_eventId = eventId;
         }
         #endregion
@@ -59,7 +61,7 @@ namespace BePex.EventSystem.Conditions
         }
 
         /// <summary>
-        /// [기능]: 목표 진행 수치에 도달하여 완료되었는지 비동기로 판정합니다.
+        /// [기능]: 조건이 만족되어 완료되었는지 비동기로 판정합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-14
         /// [마지막 수정 작성자]: 윤승종
@@ -69,6 +71,18 @@ namespace BePex.EventSystem.Conditions
         {
             int currentProgress = await GetCurrentProgressAsync();
             return currentProgress >= m_targetValue;
+        }
+
+        /// <summary>
+        /// [기능]: 진척도를 더할 수 있는지 기본적으로 판별합니다. (기본: 항상 true)
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        public virtual bool CanAddProgress(Models.EventProgressModel progress)
+        {
+            return true;
         }
         #endregion
     }

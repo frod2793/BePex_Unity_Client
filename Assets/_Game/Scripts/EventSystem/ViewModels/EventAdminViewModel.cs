@@ -146,7 +146,7 @@ namespace BePex.EventSystem.ViewModels
                 eventId = newId,
                 eventTitle = "새로운 이벤트",
                 eventDescription = "이벤트 설명을 입력하세요.",
-                eventIconAddress = "UI/Icons/Default",
+                eventIconAddress = "item_Sheet[item_Sheet_0]",
                 startDate = DateTime.Now.ToString("yyyy-MM-dd"),
                 endDate = DateTime.Now.AddDays(7).ToString("yyyy-MM-dd"),
                 condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 10 },

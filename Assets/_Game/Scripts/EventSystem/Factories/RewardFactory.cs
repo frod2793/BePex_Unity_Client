@@ -61,9 +61,9 @@ namespace BePex.EventSystem.Factories
         /// <summary>
         /// [기능]: 보상 SO 설정 데이터를 토대로 해당하는 경험치, 티켓, 포인트 보상 객체를 동적 생성해 반환합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Reflection 레지스트리 기반 생성으로 갱신
+        /// [수정 내용]: CreateInternal 헬퍼 메서드로 생성 위임 리팩토링
         /// </summary>
         public IEventReward Create(RewardDefinitionSO definition)
         {
@@ -72,21 +72,15 @@ namespace BePex.EventSystem.Factories
                 return null;
             }
 
-            if (m_registry.TryGetValue(definition.Type, out Type rewardType))
-            {
-                return (IEventReward)Activator.CreateInstance(rewardType, definition.Amount, definition.DisplayName);
-            }
-
-            Debug.LogError($"[RewardFactory] 매핑되지 않은 보상 타입: {definition.Type}");
-            return null;
+            return CreateInternal(definition.Type, definition.Amount, definition.DisplayName);
         }
 
         /// <summary>
         /// [기능]: 보상 DTO 데이터를 토대로 레지스트리에 매핑된 타입의 인스턴스를 동적 생성합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: DTO 지원을 위해 문자열 매핑 로직을 추가하여 작성
+        /// [수정 내용]: CreateInternal 헬퍼 메서드로 생성 위임 리팩토링
         /// </summary>
         public IEventReward Create(RewardDefinitionDTO definition)
         {
@@ -97,13 +91,30 @@ namespace BePex.EventSystem.Factories
 
             if (Enum.TryParse(definition.rewardType, out RewardDefinitionSO.RewardType typeEnum))
             {
-                if (m_registry.TryGetValue(typeEnum, out Type rewardType))
-                {
-                    return (IEventReward)Activator.CreateInstance(rewardType, definition.amount, definition.displayName);
-                }
+                return CreateInternal(typeEnum, definition.amount, definition.displayName);
             }
 
             Debug.LogError($"[RewardFactory] 매핑되지 않은 보상 타입: {definition.rewardType}");
+            return null;
+        }
+        #endregion
+
+        #region 내부 메서드
+        /// <summary>
+        /// [기능]: 등록된 어셈블리 맵에서 보상 타입을 찾아 IEventReward 객체로 실질 생성 및 반환합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        private IEventReward CreateInternal(RewardDefinitionSO.RewardType type, int amount, string displayName)
+        {
+            if (m_registry.TryGetValue(type, out Type rewardType))
+            {
+                return (IEventReward)Activator.CreateInstance(rewardType, amount, displayName);
+            }
+
+            Debug.LogError($"[RewardFactory] 매핑되지 않은 보상 타입: {type}");
             return null;
         }
         #endregion

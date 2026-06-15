@@ -34,5 +34,14 @@ namespace BePex.EventSystem.Interfaces
         /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
         /// </summary>
         Awaitable<bool> IsCompletedAsync();
+
+        /// <summary>
+        /// [기능]: 특정 이벤트 진척 상태 데이터를 바탕으로 현재 진척도를 가산할 수 있는지(쿨타임, 중복 출석 방지 등) 검사합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: OCP 확장을 위해 검증 메서드 신규 추가
+        /// </summary>
+        bool CanAddProgress(Models.EventProgressModel progress);
     }
 }

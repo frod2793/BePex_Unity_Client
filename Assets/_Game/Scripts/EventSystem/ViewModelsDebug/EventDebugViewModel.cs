@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using BePex.EventSystem.Models;
 using BePex.EventSystem.Interfaces;
@@ -11,7 +10,7 @@ namespace BePex.EventSystem.ViewModelsDebug
     /// [기능]: 테스트 환경에서 인위적으로 조건 수치를 더하고 세이브 상태를 조작/초기화하여 이벤트를 시뮬레이션하는 Debug 전용 ViewModel 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    public class EventDebugViewModel : IDisposable
+    public class EventDebugViewModel
     {
         #region 내부 필드
         private readonly EventModel m_eventModel;
@@ -21,13 +20,9 @@ namespace BePex.EventSystem.ViewModelsDebug
         private readonly CurrencyHUDViewModel m_hudViewModel;
         #endregion
 
-        #region 이벤트 (Observer)
-        public event Action OnStatusChanged;
-        #endregion
-
         #region 초기화
         /// <summary>
-        /// [기능]: 비즈니스 로직 모델, 저장 상태 장치, 시간 제공자, 보상 모델 및 HUD 뷰모델을 주입받는 생성자. 재화 갱신 이벤트를 연결합니다.
+        /// [기능]: 비즈니스 로직 모델, 저장 상태 장치, 시간 제공자, 보상 모델 및 HUD 뷰모델을 주입받는 생성자.
         /// [작성자]: 윤승종
         /// </summary>
         public EventDebugViewModel(EventModel eventModel, ISaveSystem saveSystem, ITimeProvider timeProvider, PlayerRewardModel playerReward, CurrencyHUDViewModel hudViewModel)
@@ -37,32 +32,6 @@ namespace BePex.EventSystem.ViewModelsDebug
             m_timeProvider = timeProvider;
             m_playerReward = playerReward;
             m_hudViewModel = hudViewModel;
-
-            if (m_hudViewModel != null)
-            {
-                m_hudViewModel.OnCurrencyChanged += func_HandleCurrencyChanged;
-            }
-        }
-
-        /// <summary>
-        /// [기능]: HUD 뷰모델의 재화 상태 변화 이벤트를 감지하여 디버그 뷰 단으로 갱신 통지를 중계합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        private void func_HandleCurrencyChanged()
-        {
-            OnStatusChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// [기능]: 등록된 이벤트를 해제하여 메모리 누수를 사전에 예방합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public void Dispose()
-        {
-            if (m_hudViewModel != null)
-            {
-                m_hudViewModel.OnCurrencyChanged -= func_HandleCurrencyChanged;
-            }
         }
         #endregion
 
@@ -192,89 +161,17 @@ namespace BePex.EventSystem.ViewModelsDebug
         public System.Collections.Generic.Dictionary<string, int> GetRewardStatus()
         {
             var result = new System.Collections.Generic.Dictionary<string, int>();
-            if (m_playerReward == null)
-            {
-                return result;
-            }
+            if (m_playerReward == null) return result;
 
             var fields = typeof(PlayerRewardModel).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
             for (int i = 0; i < fields.Length; i++)
             {
                 if (fields[i].FieldType == typeof(int))
                 {
-                    string displayName = fields[i].Name switch
-                    {
-                        "totalExp" => "경험치",
-                        "totalTickets" => "티켓",
-                        "totalPoints" => "이벤트 포인트",
-                        "totalSeasonPoints" => "시즌 포인트",
-                        "totalCredits" => "재화",
-                        _ => fields[i].Name
-                    };
-                    result[displayName] = (int)fields[i].GetValue(m_playerReward);
+                    result[fields[i].Name] = (int)fields[i].GetValue(m_playerReward);
                 }
             }
             return result;
-        }
-
-        /// <summary>
-        /// [기능]: 임의의 포인트를 소모(교환)하고 실시간 세이브 영속성 적용 및 HUD를 갱신합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public async Awaitable SimulateSpendPointsAsync(int amount)
-        {
-            if (m_playerReward != null && m_playerReward.totalPoints >= amount)
-            {
-                m_playerReward.totalPoints -= amount;
-                if (m_saveSystem != null)
-                {
-                    await m_saveSystem.SaveRewardStateAsync(m_playerReward);
-                }
-                if (m_hudViewModel != null)
-                {
-                    m_hudViewModel.NotifyCurrencyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// [기능]: 임의의 시즌 포인트를 소모하고 실시간 세이브 영속성 적용 및 HUD를 갱신합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public async Awaitable SimulateSpendSeasonPointsAsync(int amount)
-        {
-            if (m_playerReward != null && m_playerReward.totalSeasonPoints >= amount)
-            {
-                m_playerReward.totalSeasonPoints -= amount;
-                if (m_saveSystem != null)
-                {
-                    await m_saveSystem.SaveRewardStateAsync(m_playerReward);
-                }
-                if (m_hudViewModel != null)
-                {
-                    m_hudViewModel.NotifyCurrencyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// [기능]: 임의의 코인성 재화(Credits)를 소모하고 실시간 세이브 영속성 적용 및 HUD를 갱신합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public async Awaitable SimulateSpendCreditsAsync(int amount)
-        {
-            if (m_playerReward != null && m_playerReward.totalCredits >= amount)
-            {
-                m_playerReward.totalCredits -= amount;
-                if (m_saveSystem != null)
-                {
-                    await m_saveSystem.SaveRewardStateAsync(m_playerReward);
-                }
-                if (m_hudViewModel != null)
-                {
-                    m_hudViewModel.NotifyCurrencyChanged();
-                }
-            }
         }
         #endregion
     }

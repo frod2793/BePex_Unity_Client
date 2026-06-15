@@ -139,36 +139,23 @@ namespace BePex.EventSystem.Views
 
             if (m_descText != null)
             {
-                m_descText.color = Color.black;
                 var sb = new System.Text.StringBuilder();
-
-                // 1. 상세내용 출력
                 sb.AppendLine(def.eventDescription);
                 sb.AppendLine();
-
-                // 2. 보상 x 개수 출력 (한글 보상 유형 매핑 적용)
+                sb.AppendLine("★ 획득 가능 보상:");
+                
                 if (def.rewards != null && def.rewards.Count > 0)
                 {
                     for (int i = 0; i < def.rewards.Count; i++)
                     {
-                        string typeName = def.rewards[i].rewardType;
-                        string rewardName = def.rewards[i].displayName;
-
-                        // rewardType을 바탕으로 명확한 한글 표시명 환산
-                        if (System.Enum.TryParse<BePex.EventSystem.Data.RewardDefinitionSO.RewardType>(typeName, out var rType))
-                        {
-                            string disp = BePex.EventSystem.Utils.EnumDisplayHelper.GetDisplayName(rType);
-                            rewardName = disp == "재화 보상" ? "재화" : disp;
-                        }
-
-                        sb.AppendLine(string.Format("- {0} x{1}", rewardName, def.rewards[i].amount));
+                        sb.AppendLine(string.Format("- {0} x{1}", def.rewards[i].displayName, def.rewards[i].amount));
                     }
                 }
                 else
                 {
                     sb.AppendLine("- 없음");
                 }
-
+                
                 m_descText.text = sb.ToString();
             }
 

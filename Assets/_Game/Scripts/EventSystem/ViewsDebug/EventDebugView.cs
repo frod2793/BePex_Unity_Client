@@ -13,20 +13,20 @@ namespace BePex.EventSystem.ViewsDebug
     public class EventDebugView : MonoBehaviour
     {
         #region UI 참조 (Inspector)
-        [Header("스크롤 뷰 컨테이너")]
+        [Header("Scroll View Container")]
         [SerializeField] private RectTransform m_contentParent;
         
-        [Header("동적 프리팹")]
+        [Header("Dynamic Prefabs")]
         [SerializeField] private Button m_actionButtonPrefab;
         [SerializeField] private TextMeshProUGUI m_rewardStatusTextPrefab;
 
-        [Header("시간 및 데이터 제어")]
+        [Header("Time & Data Controls")]
         [SerializeField] private Button m_addOneDayButton;
         [SerializeField] private Button m_addSevenDaysButton;
         [SerializeField] private Button m_resetTimeButton;
         [SerializeField] private Button m_resetDataButton;
 
-        [Header("드로어 패널 설정 (좌측 슬라이딩 패널)")]
+        [Header("Drawer Panel Settings (Left Sliding Panel)")]
         [SerializeField] private RectTransform m_drawerPanel;
         [SerializeField] private Button m_drawerToggleButton;
         [SerializeField] private TextMeshProUGUI m_drawerToggleText;
@@ -156,41 +156,19 @@ namespace BePex.EventSystem.ViewsDebug
 
             UpdateToggleText();
         }
-
-        /// <summary>
-        /// [기능]: 오브젝트 파괴 시 뷰모델의 상태 변화 구독을 확실히 해제하여 메모리 및 이벤트 누수를 예방합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        private void OnDestroy()
-        {
-            if (m_slideCoroutine != null)
-            {
-                StopCoroutine(m_slideCoroutine);
-            }
-
-            if (m_viewModel != null)
-            {
-                m_viewModel.OnStatusChanged -= RefreshDynamicUI;
-            }
-        }
         #endregion
 
         #region 공개 메서드
         /// <summary>
-        /// [기능]: 디버그 뷰모델을 주입받고 컨트롤 버튼 바인딩 및 상태 변화 관찰 이벤트를 등록합니다.
+        /// [기능]: 디버그 뷰모델을 주입받고 컨트롤 버튼 바인딩 및 초기 동적 리스트업을 수행합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 실시간 보유 재화 동적 모니터링 이벤트 구독 추가
+        /// [수정 내용]: OCP 기반 동적 UI 렌더링으로 개편
         /// </summary>
         public void Bind(EventDebugViewModel viewModel)
         {
             m_viewModel = viewModel;
-
-            if (m_viewModel != null)
-            {
-                m_viewModel.OnStatusChanged += RefreshDynamicUI;
-            }
 
             if (m_addOneDayButton != null)
             {
@@ -371,55 +349,6 @@ namespace BePex.EventSystem.ViewsDebug
                     var txt = Instantiate(m_rewardStatusTextPrefab, gridGo.transform);
                     txt.text = $"• {kvp.Key}: <color=#FFD700>{kvp.Value}</color>";
                     txt.alignment = TextAlignmentOptions.Left;
-                }
-
-                // StatusGrid 바로 아래에 3종의 소모(사용) 시뮬레이션 버튼을 순차적으로 배치하여 직관적 재화 소모 유도
-                if (m_actionButtonPrefab != null)
-                {
-                    // 1. 이벤트 포인트 소모 버튼
-                    var spendEventBtn = Instantiate(m_actionButtonPrefab, m_contentParent);
-                    var txt1 = spendEventBtn.GetComponentInChildren<TextMeshProUGUI>();
-                    if (txt1 != null)
-                    {
-                        txt1.text = "[소모] 이벤트 포인트 40 소모";
-                        txt1.fontSize = 13f;
-                    }
-                    spendEventBtn.onClick.AddListener(async () =>
-                    {
-                        await m_viewModel.SimulateSpendPointsAsync(40);
-                        RefreshDynamicUI();
-                    });
-                    m_spawnedItems.Add(spendEventBtn.gameObject);
-
-                    // 2. 시즌 포인트 소모 버튼
-                    var spendSeasonBtn = Instantiate(m_actionButtonPrefab, m_contentParent);
-                    var txt2 = spendSeasonBtn.GetComponentInChildren<TextMeshProUGUI>();
-                    if (txt2 != null)
-                    {
-                        txt2.text = "[소모] 시즌 포인트 50 소모";
-                        txt2.fontSize = 13f;
-                    }
-                    spendSeasonBtn.onClick.AddListener(async () =>
-                    {
-                        await m_viewModel.SimulateSpendSeasonPointsAsync(50);
-                        RefreshDynamicUI();
-                    });
-                    m_spawnedItems.Add(spendSeasonBtn.gameObject);
-
-                    // 3. 재화(Credit) 소모 버튼
-                    var spendCreditBtn = Instantiate(m_actionButtonPrefab, m_contentParent);
-                    var txt3 = spendCreditBtn.GetComponentInChildren<TextMeshProUGUI>();
-                    if (txt3 != null)
-                    {
-                        txt3.text = "[소모] 재화 100 소모";
-                        txt3.fontSize = 13f;
-                    }
-                    spendCreditBtn.onClick.AddListener(async () =>
-                    {
-                        await m_viewModel.SimulateSpendCreditsAsync(100);
-                        RefreshDynamicUI();
-                    });
-                    m_spawnedItems.Add(spendCreditBtn.gameObject);
                 }
             }
 

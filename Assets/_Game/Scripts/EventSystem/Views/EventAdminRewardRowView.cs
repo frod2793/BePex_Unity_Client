@@ -4,6 +4,7 @@ using TMPro;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Data;
 using BePex.EventSystem.Utils;
+using BePex.EventSystem.Factories;
 using System;
 
 namespace BePex.EventSystem.Views
@@ -18,7 +19,8 @@ namespace BePex.EventSystem.Views
         [SerializeField] private TMP_Dropdown m_typeDropdown;
         [SerializeField] private TMP_InputField m_amountInput;
         [SerializeField] private TMP_InputField m_nameInput;
-        [SerializeField] private TMP_InputField m_iconInput;
+        [SerializeField] private TMP_Dropdown m_iconDropdown;
+        [SerializeField] private Image m_iconPreview;
         [SerializeField] private Button m_removeButton;
         #endregion
 
@@ -66,11 +68,23 @@ namespace BePex.EventSystem.Views
                 m_nameInput.onValueChanged.AddListener(func_OnNameChanged);
             }
 
-            if (m_iconInput != null)
+            if (m_iconDropdown != null)
             {
-                m_iconInput.onValueChanged.RemoveAllListeners();
-                m_iconInput.text = m_dto.iconAddress;
-                m_iconInput.onValueChanged.AddListener(func_OnIconChanged);
+                m_iconDropdown.onValueChanged.RemoveAllListeners();
+                m_iconDropdown.ClearOptions();
+                
+                var options = new System.Collections.Generic.List<TMP_Dropdown.OptionData>();
+                for (int i = 0; i <= 20; i++)
+                {
+                    options.Add(new TMP_Dropdown.OptionData($"item_Sheet[item_Sheet_{i}]"));
+                }
+                m_iconDropdown.AddOptions(options);
+
+                int idx = ParseIconIndex(m_dto.iconAddress);
+                m_iconDropdown.value = idx;
+                m_iconDropdown.onValueChanged.AddListener(func_OnIconDropdownChanged);
+                
+                func_UpdateThumbnailWrapper(idx);
             }
 
             if (m_removeButton != null)
@@ -146,17 +160,15 @@ namespace BePex.EventSystem.Views
         }
 
         /// <summary>
-        /// [기능]: 아이콘 어드레서블 주소 InputField 변경 발생 시 DTO에 인가하는 UI 이벤트 콜백.
+        /// [기능]: 아이콘 드롭다운 인덱스 변경 시 DTO에 인가하고 썸네일을 갱신하는 UI 이벤트 콜백.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
         /// </summary>
-        private void func_OnIconChanged(string val)
+        private async void func_OnIconDropdownChanged(int index)
         {
-            if (m_dto != null)
+            if (m_dto != null && m_iconDropdown != null)
             {
-                m_dto.iconAddress = val;
+                m_dto.iconAddress = m_iconDropdown.options[index].text;
+                await UpdateThumbnailAsync(index, m_iconPreview);
             }
         }
 
@@ -204,6 +216,72 @@ namespace BePex.EventSystem.Views
                 }
             }
             return 0;
+        }
+        #endregion
+
+        #region 헬퍼 메서드 및 썸네일 제어
+        /// <summary>
+        /// [기능]: 어드레서블 주소 문자열로부터 item_Sheet 인덱스를 안전하게 추출합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private int ParseIconIndex(string address)
+        {
+            if (string.IsNullOrEmpty(address))
+            {
+                return 0;
+            }
+            try
+            {
+                int openBracket = address.IndexOf('[');
+                int closeBracket = address.IndexOf(']');
+                if (openBracket != -1 && closeBracket != -1 && closeBracket > openBracket)
+                {
+                    string subAsset = address.Substring(openBracket + 1, closeBracket - openBracket - 1);
+                    string indexStr = subAsset.Replace("item_Sheet_", "");
+                    if (int.TryParse(indexStr, out int idx))
+                    {
+                        return idx;
+                    }
+                }
+                else
+                {
+                    string indexStr = address.Replace("item_Sheet_", "");
+                    if (int.TryParse(indexStr, out int idx))
+                    {
+                        return idx;
+                    }
+                }
+            }
+            catch
+            {
+                // 예외 발생 시 기본값 0
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// [기능]: 지정한 인덱스의 스프라이트를 로딩하여 썸네일에 실시간 갱신합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async Awaitable UpdateThumbnailAsync(int index, Image targetImage)
+        {
+            if (targetImage != null)
+            {
+                Sprite sprite = await ItemSpriteMapper.GetItemSpriteAsync(index);
+                if (targetImage != null)
+                {
+                    targetImage.sprite = sprite;
+                }
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 동기 맥락에서 호출하기 위한 썸네일 비동기 실행기.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async void func_UpdateThumbnailWrapper(int index)
+        {
+            await UpdateThumbnailAsync(index, m_iconPreview);
         }
         #endregion
     }

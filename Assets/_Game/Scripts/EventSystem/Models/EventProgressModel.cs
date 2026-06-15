@@ -17,6 +17,7 @@ namespace BePex.EventSystem.Models
         public int currentProgress;
         public bool isCompleted;
         public bool isRewardClaimed;
+        public long lastUpdatedTicks;
         #endregion
 
         #region 초기화
@@ -33,6 +34,7 @@ namespace BePex.EventSystem.Models
             currentProgress = 0;
             isCompleted = false;
             isRewardClaimed = false;
+            lastUpdatedTicks = 0;
         }
         #endregion
     }

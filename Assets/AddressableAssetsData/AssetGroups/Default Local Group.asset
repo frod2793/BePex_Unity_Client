@@ -20,6 +20,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5df4618ab18fc4b85a89588d6296c778
+    m_Address: item_Sheet
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 6766478349c5e47f3820c6e08c9866b8
     m_Address: EventTableJson
     m_ReadOnly: 0

@@ -154,6 +154,11 @@ namespace BePex.EventSystem.Views
         {
             ReleaseSprite();
 
+            if (string.IsNullOrEmpty(address) || address == "UI/Icons/Default")
+            {
+                address = "item_Sheet[item_Sheet_0]";
+            }
+
             try
             {
                 // 1단계: 해당 어드레서블 주소가 카탈로그에 존재하는지 검증 (콘솔 에러 강제 출력 방지)
@@ -164,12 +169,25 @@ namespace BePex.EventSystem.Views
 
                 if (!exists)
                 {
-                    Debug.LogWarning($"[EventItemCell] 존재하지 않는 어드레서블 주소입니다. 주소: {address}");
-                    if (targetImage != null)
+                    // 요청한 특정 아이콘이 없는 경우 기본 이미지로 2차 폴백 시도
+                    if (address != "item_Sheet[item_Sheet_0]")
                     {
-                        targetImage.sprite = null;
+                        address = "item_Sheet[item_Sheet_0]";
+                        locationsHandle = Addressables.LoadResourceLocationsAsync(address, typeof(Sprite));
+                        locations = await locationsHandle.Task;
+                        exists = locations != null && locations.Count > 0;
+                        Addressables.Release(locationsHandle);
                     }
-                    return;
+
+                    if (!exists)
+                    {
+                        Debug.LogWarning($"[EventItemCell] 존재하지 않는 어드레서블 주소입니다. 주소: {address}");
+                        if (targetImage != null)
+                        {
+                            targetImage.sprite = null;
+                        }
+                        return;
+                    }
                 }
 
                 // 2단계: 주소가 확인되었으므로 안전하게 실제 에셋 로드 시도

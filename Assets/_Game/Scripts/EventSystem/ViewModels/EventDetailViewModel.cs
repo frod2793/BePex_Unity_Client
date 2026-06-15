@@ -12,11 +12,12 @@ namespace BePex.EventSystem.ViewModels
     /// [기능]: 선택된 특정 이벤트의 상세 정보 및 진행 슬라이더 수치, 보상 수령 명령 처리를 담당하는 ViewModel 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    public class EventDetailViewModel
+    public class EventDetailViewModel : IDisposable
     {
         #region 내부 필드
         private readonly EventModel m_eventModel;
         private readonly ISaveSystem m_saveSystem;
+        private readonly PlayerRewardModel m_playerReward;
         private string m_currentEventId;
         #endregion
 
@@ -27,16 +28,17 @@ namespace BePex.EventSystem.ViewModels
 
         #region 초기화
         /// <summary>
-        /// [기능]: 도메인 모델과 데이터 영속성 장치를 주입받고 진행 상황 변경 감지 이벤트를 처리하는 생성자.
+        /// [기능]: 도메인 모델과 데이터 영속성 장치, 플레이어 누적 보상 정보를 주입받고 진행 상황 변경 감지 이벤트를 처리하는 생성자.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: PlayerRewardModel 주입 인자 추가 및 캡슐화
         /// </summary>
-        public EventDetailViewModel(EventModel eventModel, ISaveSystem saveSystem)
+        public EventDetailViewModel(EventModel eventModel, ISaveSystem saveSystem, PlayerRewardModel playerReward)
         {
             m_eventModel = eventModel;
             m_saveSystem = saveSystem;
+            m_playerReward = playerReward;
 
             m_eventModel.OnEventProgressChanged += HandleProgressChanged;
             m_eventModel.OnEventRewardClaimed += HandleRewardClaimed;
@@ -134,11 +136,11 @@ namespace BePex.EventSystem.ViewModels
         /// <summary>
         /// [기능]: 보상 수령 명령(Command)을 전달하여 도메인 단에서 처리를 비동기로 집행하고 성공 결과를 전파합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: PlayerRewardModel 매개변수를 제거하고 내부 필드를 사용하도록 변경
         /// </summary>
-        public async Awaitable ClaimRewardAsync(PlayerRewardModel playerReward)
+        public async Awaitable ClaimRewardAsync()
         {
             bool canClaim = await CanClaimRewardAsync();
             if (canClaim == false)
@@ -146,7 +148,7 @@ namespace BePex.EventSystem.ViewModels
                 return;
             }
 
-            bool success = await m_eventModel.ClaimRewardAsync(m_currentEventId, m_saveSystem, playerReward);
+            bool success = await m_eventModel.ClaimRewardAsync(m_currentEventId, m_saveSystem, m_playerReward);
             if (success)
             {
                 OnRewardClaimSuccess?.Invoke(m_currentEventId);
@@ -182,6 +184,21 @@ namespace BePex.EventSystem.ViewModels
             if (eventId == m_currentEventId)
             {
                 OnDetailUpdated?.Invoke();
+            }
+        }
+        /// <summary>
+        /// [기능]: 메모리 누수 방지를 위한 이벤트 언구독 로직.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: IDisposable 구현
+        /// </summary>
+        public void Dispose()
+        {
+            if (m_eventModel != null)
+            {
+                m_eventModel.OnEventProgressChanged -= HandleProgressChanged;
+                m_eventModel.OnEventRewardClaimed -= HandleRewardClaimed;
             }
         }
         #endregion

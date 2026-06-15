@@ -36,7 +36,7 @@ namespace BePex.EventSystem.Rewards
         {
             if (playerReward != null)
             {
-                // TODO: 플레이어 자산 모델에 시즌 포인트 지급하는 비즈니스 로직 작성 필요
+                playerReward.totalSeasonPoints += m_amount;
             }
         }
         #endregion

@@ -36,7 +36,7 @@ namespace BePex.EventSystem.Rewards
         {
             if (playerReward != null)
             {
-                // TODO: 플레이어 자산 모델에 재화 보상 지급하는 비즈니스 로직 작성 필요
+                playerReward.totalCredits += m_amount;
             }
         }
         #endregion

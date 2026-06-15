@@ -19,6 +19,7 @@ namespace BePex.EventSystem.Views
         [SerializeField] private TextMeshProUGUI m_titleText;
         [SerializeField] private Image m_iconImage;
         [SerializeField] private Button m_selectButton;
+        [SerializeField] private Image m_backgroundImage;
         #endregion
 
         #region 내부 필드
@@ -34,7 +35,12 @@ namespace BePex.EventSystem.Views
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-14
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: ScriptableObject 의존성을 EventDefinitionDTO로 교체 및 어드레서블 스프라이트 지연 로딩 추가
+        /// <summary>
+        /// [기능]: 이벤트 DTO 데이터 및 뷰모델 인스턴스를 주입받아 UI 텍스트를 구성하고, 어드레서블 주소로 스프라이트를 비동기 로드 및 바인딩합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 획득 상태별 시각 효과 적용(UpdateCellAppearanceAsync 호출)
         /// </summary>
         public void Setup(EventDefinitionDTO definition, EventListViewModel viewModel)
         {
@@ -57,6 +63,8 @@ namespace BePex.EventSystem.Views
                 m_selectButton.onClick.RemoveAllListeners();
                 m_selectButton.onClick.AddListener(func_OnSelectCell);
             }
+
+            UpdateCellAppearanceAsync();
         }
 
         /// <summary>
@@ -178,6 +186,59 @@ namespace BePex.EventSystem.Views
                 if (targetImage != null)
                 {
                     targetImage.sprite = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 해당 이벤트의 획득 및 수령 완료 상태를 비동기로 조회해 배경색 및 텍스트 색상을 상태별로 업데이트합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-15
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성 및 Allman Style 준수
+        /// </summary>
+        private async void UpdateCellAppearanceAsync()
+        {
+            if (m_viewModel == null || m_definition == null)
+            {
+                return;
+            }
+
+            string eventId = m_definition.eventId;
+            bool isClaimed = await m_viewModel.IsRewardClaimedAsync(eventId);
+            bool canClaim = await m_viewModel.CanClaimRewardAsync(eventId);
+
+            Image bgImage = m_backgroundImage;
+            if (bgImage == null)
+            {
+                bgImage = GetComponent<Image>();
+            }
+
+            if (bgImage != null)
+            {
+                if (isClaimed)
+                {
+                    bgImage.color = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+                }
+                else if (canClaim)
+                {
+                    bgImage.color = new Color(1.0f, 0.9f, 0.4f, 1.0f);
+                }
+                else
+                {
+                    bgImage.color = Color.white;
+                }
+            }
+
+            if (m_titleText != null)
+            {
+                if (isClaimed)
+                {
+                    m_titleText.color = new Color(0.3f, 0.3f, 0.3f, 0.6f);
+                }
+                else
+                {
+                    m_titleText.color = Color.black;
                 }
             }
         }

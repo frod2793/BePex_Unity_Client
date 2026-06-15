@@ -23,6 +23,7 @@ namespace BePex.EventSystem.Infrastructure
         [SerializeField] private EventListView m_eventListView;
         [SerializeField] private EventDetailView m_eventDetailView;
         [SerializeField] private RewardPopupView m_rewardPopupView;
+        [SerializeField] private CurrencyHUDView m_currencyHUDView;
 
         [Header("디버그 뷰 (선택 사항)")]
         [SerializeField] private EventDebugView m_debugView;
@@ -34,10 +35,27 @@ namespace BePex.EventSystem.Infrastructure
         [SerializeField] private string m_eventJsonAddress = "EventTableJson";
         #endregion
 
+        #region 내부 필드
+        private EventDebugViewModel m_debugVM;
+        #endregion
+
         #region 유니티 생명주기
         private async void Start()
         {
             await InitializeAsync();
+        }
+
+        /// <summary>
+        /// [기능]: 씬 소멸 시 생성된 디버그 뷰모델의 라이프사이클 리소스를 안전하게 정리해 줍니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void OnDestroy()
+        {
+            if (m_debugVM != null)
+            {
+                m_debugVM.Dispose();
+                m_debugVM = null;
+            }
         }
         #endregion
 
@@ -45,16 +63,18 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 비즈니스 로직 및 ViewModel 인스턴스를 순차 수동 DI 생성 조립하고 각 View에 바인드합니다. 어드레서블을 통해 비동기로 테이블을 다운로드합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Addressables 기반 비동기 로딩 및 Awaitable 대응
+        /// [수정 내용]: 디버그 모드 여부와 관계없이 항상 JsonSaveSystem을 주입하도록 변경하여 씬 재시작 시 데이터 유지 보장
         /// </summary>
         private async Awaitable InitializeAsync()
         {
-            // 1단계: 디버그 옵션에 따른 저장 장치 선택 (임시 메모리 vs 로컬 디스크)
-            ISaveSystem saveSystem = (m_useDebugMode && m_debugView != null) 
-                ? new InMemorySaveSystem() 
-                : new JsonSaveSystem();
+            // 1단계: 디버그 옵션에 따른 저장 장치 및 시간 제공자 선택
+            ISaveSystem saveSystem = new JsonSaveSystem();
+                
+            ITimeProvider timeProvider = (m_useDebugMode && m_debugView != null)
+                ? new BePex.EventSystem.Infrastructure.DebugTimeProvider()
+                : new BePex.EventSystem.Infrastructure.SystemTimeProvider();
 
             // 2단계: Addressables 기반 데이터 로딩 (JSON TextAsset)
             EventTableDTO eventTableDTO = null;
@@ -76,19 +96,26 @@ namespace BePex.EventSystem.Infrastructure
             }
 
             // 3단계: 조건 및 보상 Factory 생성
-            var condFactory = new ConditionFactory(saveSystem);
+            var condFactory = new ConditionFactory(saveSystem, timeProvider);
             var rewFactory = new RewardFactory();
 
             // 4단계: 비동기로 유저 누적 보상 정보 로드
             var playerReward = await saveSystem.LoadRewardStateAsync();
 
             // 5단계: 도메인 Domain Model 생성 
-            var eventModel = new EventModel(eventTableDTO, condFactory, rewFactory);
+            var eventModel = new EventModel(eventTableDTO, condFactory, rewFactory, timeProvider);
 
             // 6단계: MVVM ViewModels 수동 생성자 주입 생성
-            var listVM = new EventListViewModel(eventModel);
-            var detailVM = new EventDetailViewModel(eventModel, saveSystem);
-            var popupVM = new RewardPopupViewModel(playerReward, saveSystem);
+            var listVM = new EventListViewModel(eventModel, saveSystem);
+            var detailVM = new EventDetailViewModel(eventModel, saveSystem, playerReward);
+            var popupVM = new RewardPopupViewModel(playerReward, saveSystem, eventModel);
+            var hudVM = new CurrencyHUDViewModel(playerReward);
+
+            // 보상 데이터 변경에 따른 상단 HUD 동기화 이벤트 체이닝
+            if (popupVM != null && hudVM != null)
+            {
+                popupVM.OnRewardDataChanged += hudVM.NotifyCurrencyChanged;
+            }
 
             // 7단계: Views에 ViewModels 바인딩 연결
             if (m_eventListView != null)
@@ -106,11 +133,16 @@ namespace BePex.EventSystem.Infrastructure
                 m_rewardPopupView.Bind(popupVM, detailVM);
             }
 
+            if (m_currencyHUDView != null)
+            {
+                m_currencyHUDView.Bind(hudVM);
+            }
+
             // 8단계: [디버그 전용] 디버그 모드가 켜져 있고 조작 뷰가 연결된 경우 바인딩 처리
             if (m_useDebugMode && m_debugView != null)
             {
-                var debugVM = new EventDebugViewModel(eventModel, saveSystem);
-                m_debugView.Bind(debugVM);
+                m_debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM);
+                m_debugView.Bind(m_debugVM);
                 m_debugView.gameObject.SetActive(true);
             }
             else if (m_debugView != null)

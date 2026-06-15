@@ -2,113 +2,483 @@ using UnityEngine;
 using UnityEngine.UI;
 using BePex.EventSystem.ViewModelsDebug;
 using TMPro;
+using System.Collections;
 
 namespace BePex.EventSystem.ViewsDebug
 {
     /// <summary>
-    /// [기능]: 테스트 환경에서 인풋 필드 입력과 버튼 터치를 모아 디버그 뷰모델에 인가해 주는 조작용 UI View 클래스.
+    /// [기능]: 동적 생성(OCP) 방식을 통해 이벤트 조작 및 보상 현황을 스크롤 뷰에 나열하는 시뮬레이터 전용 View (슬라이드 드로어 지원).
     /// [작성자]: 윤승종
     /// </summary>
     public class EventDebugView : MonoBehaviour
     {
         #region UI 참조 (Inspector)
-        [SerializeField] private TMP_Dropdown m_eventIdDropdown;
-        [SerializeField] private TMP_InputField m_amountInput;
-        [SerializeField] private Button m_addProgressButton;
-        [SerializeField] private Button m_resetButton;
+        [Header("스크롤 뷰 컨테이너")]
+        [SerializeField] private RectTransform m_contentParent;
+        
+        [Header("동적 프리팹")]
+        [SerializeField] private Button m_actionButtonPrefab;
+        [SerializeField] private TextMeshProUGUI m_rewardStatusTextPrefab;
+
+        [Header("시간 및 데이터 제어")]
+        [SerializeField] private Button m_addOneDayButton;
+        [SerializeField] private Button m_addSevenDaysButton;
+        [SerializeField] private Button m_resetTimeButton;
+        [SerializeField] private Button m_resetDataButton;
+
+        [Header("드로어 패널 설정 (좌측 슬라이딩 패널)")]
+        [SerializeField] private RectTransform m_drawerPanel;
+        [SerializeField] private Button m_drawerToggleButton;
+        [SerializeField] private TextMeshProUGUI m_drawerToggleText;
+        [SerializeField] private float m_slideDuration = 0.25f;
+        [SerializeField] private float m_drawerWidth = 450f;
         #endregion
 
         #region 내부 필드
         private EventDebugViewModel m_viewModel;
+        private readonly System.Collections.Generic.List<GameObject> m_spawnedItems = new System.Collections.Generic.List<GameObject>();
+        private bool m_isDrawerOpen = false;
+        private Coroutine m_slideCoroutine;
+        #endregion
+
+        #region 유니티 생명주기
+        /// <summary>
+        /// [기능]: 드로어 패널의 앵커, 피벗, 자식 위치 및 토글 레이아웃을 초기 자동 설정하며, 2x2 컨트롤 그리드 및 flexibleHeight 스크롤 뷰를 구성합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void Awake()
+        {
+            // 캔버스 하위 직속으로 이동하여 전체 화면 스트레치 앵커 작동 보장
+            Canvas canvas = GetComponentInParent<Canvas>();
+            if (canvas != null && transform.parent != canvas.transform)
+            {
+                transform.SetParent(canvas.transform, false);
+            }
+
+            if (m_drawerPanel == null)
+            {
+                m_drawerPanel = GetComponent<RectTransform>();
+            }
+
+            if (m_drawerPanel != null)
+            {
+                m_drawerPanel.anchorMin = new Vector2(0f, 0f);
+                m_drawerPanel.anchorMax = new Vector2(0f, 1f);
+                m_drawerPanel.pivot = new Vector2(0f, 0.5f);
+                m_drawerPanel.sizeDelta = new Vector2(m_drawerWidth, 0f);
+                m_drawerPanel.anchoredPosition = new Vector2(-m_drawerWidth, 0f);
+            }
+
+            // ControlPanel을 2x2 그리드로 구성하여 넓은 공간 활용 및 글씨 겹침 방지
+            if (m_addOneDayButton != null)
+            {
+                var controlPanel = m_addOneDayButton.transform.parent as RectTransform;
+                if (controlPanel != null)
+                {
+                    var horizontalLayout = controlPanel.GetComponent<HorizontalLayoutGroup>();
+                    if (horizontalLayout != null)
+                    {
+                        DestroyImmediate(horizontalLayout);
+                    }
+
+                    var grid = controlPanel.GetComponent<GridLayoutGroup>();
+                    if (grid == null)
+                    {
+                        grid = controlPanel.gameObject.AddComponent<GridLayoutGroup>();
+                    }
+
+                    grid.cellSize = new Vector2(195f, 40f);
+                    grid.spacing = new Vector2(10f, 10f);
+                    grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                    grid.constraintCount = 2;
+                    grid.childAlignment = TextAnchor.UpperLeft;
+
+                    var fitter = controlPanel.GetComponent<ContentSizeFitter>();
+                    if (fitter == null)
+                    {
+                        fitter = controlPanel.gameObject.AddComponent<ContentSizeFitter>();
+                    }
+                    fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                    fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                }
+            }
+
+            // ScrollView가 남는 세로 공간을 전부 채우도록 flexibleHeight 주입 (Squish 현상 복구)
+            if (m_contentParent != null)
+            {
+                var viewport = m_contentParent.parent as RectTransform;
+                if (viewport != null)
+                {
+                    var scrollView = viewport.parent as RectTransform;
+                    if (scrollView != null)
+                    {
+                        var layoutElement = scrollView.gameObject.GetComponent<LayoutElement>();
+                        if (layoutElement == null)
+                        {
+                            layoutElement = scrollView.gameObject.AddComponent<LayoutElement>();
+                        }
+                        layoutElement.flexibleHeight = 1f;
+                        layoutElement.minHeight = 200f;
+                    }
+                }
+            }
+
+            // 토글 버튼은 VerticalLayoutGroup의 영향을 받지 않도록 LayoutElement 배치 제외 설정
+            if (m_drawerToggleButton != null)
+            {
+                var layoutElement = m_drawerToggleButton.gameObject.GetComponent<LayoutElement>();
+                if (layoutElement == null)
+                {
+                    layoutElement = m_drawerToggleButton.gameObject.AddComponent<LayoutElement>();
+                }
+                layoutElement.ignoreLayout = true;
+
+                var btnRect = m_drawerToggleButton.GetComponent<RectTransform>();
+                if (btnRect != null)
+                {
+                    btnRect.anchorMin = new Vector2(1f, 0.5f);
+                    btnRect.anchorMax = new Vector2(1f, 0.5f);
+                    btnRect.pivot = new Vector2(0f, 0.5f);
+                    btnRect.anchoredPosition = new Vector2(0f, 0f);
+                }
+
+                m_drawerToggleButton.onClick.RemoveAllListeners();
+                m_drawerToggleButton.onClick.AddListener(func_ToggleDrawer);
+            }
+
+            // 레이아웃 그룹 여백 패딩 및 간격 조정 (너비 확장에 맞춰 가독성 극대화)
+            var layout = GetComponent<VerticalLayoutGroup>();
+            if (layout != null)
+            {
+                layout.padding = new RectOffset(20, 20, 30, 30);
+                layout.spacing = 15f;
+            }
+
+            UpdateToggleText();
+        }
+
+        /// <summary>
+        /// [기능]: 오브젝트 파괴 시 뷰모델의 상태 변화 구독을 확실히 해제하여 메모리 및 이벤트 누수를 예방합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void OnDestroy()
+        {
+            if (m_slideCoroutine != null)
+            {
+                StopCoroutine(m_slideCoroutine);
+            }
+
+            if (m_viewModel != null)
+            {
+                m_viewModel.OnStatusChanged -= RefreshDynamicUI;
+            }
+        }
         #endregion
 
         #region 공개 메서드
         /// <summary>
-        /// [기능]: 디버그 뷰모델을 주입받아 드롭다운 목록을 채우고 버튼 리스너 바인딩을 집행합니다.
+        /// [기능]: 디버그 뷰모델을 주입받고 컨트롤 버튼 바인딩 및 상태 변화 관찰 이벤트를 등록합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 인풋 필드에서 드롭다운 선택 방식으로 개편
+        /// [수정 내용]: 실시간 보유 재화 동적 모니터링 이벤트 구독 추가
         /// </summary>
         public void Bind(EventDebugViewModel viewModel)
         {
             m_viewModel = viewModel;
 
-            if (m_eventIdDropdown != null && m_viewModel != null)
+            if (m_viewModel != null)
             {
-                m_eventIdDropdown.onValueChanged.RemoveAllListeners();
-                m_eventIdDropdown.ClearOptions();
-                
-                var events = m_viewModel.GetActiveEvents();
-                var options = new System.Collections.Generic.List<string>();
-                for (int i = 0; i < events.Count; i++)
-                {
-                    options.Add(string.Format("[{0}] {1}", events[i].eventId, events[i].eventTitle));
-                }
-                m_eventIdDropdown.AddOptions(options);
+                m_viewModel.OnStatusChanged += RefreshDynamicUI;
             }
 
-            if (m_addProgressButton != null)
+            if (m_addOneDayButton != null)
             {
-                m_addProgressButton.onClick.RemoveAllListeners();
-                m_addProgressButton.onClick.AddListener(func_OnAddProgressClick);
+                m_addOneDayButton.onClick.RemoveAllListeners();
+                m_addOneDayButton.onClick.AddListener(func_OnAddOneDayClick);
             }
 
-            if (m_resetButton != null)
+            if (m_addSevenDaysButton != null)
             {
-                m_resetButton.onClick.RemoveAllListeners();
-                m_resetButton.onClick.AddListener(func_OnResetClick);
+                m_addSevenDaysButton.onClick.RemoveAllListeners();
+                m_addSevenDaysButton.onClick.AddListener(func_OnAddSevenDaysClick);
             }
+
+            if (m_resetTimeButton != null)
+            {
+                m_resetTimeButton.onClick.RemoveAllListeners();
+                m_resetTimeButton.onClick.AddListener(func_OnResetTimeClick);
+            }
+
+            if (m_resetDataButton != null)
+            {
+                m_resetDataButton.onClick.RemoveAllListeners();
+                m_resetDataButton.onClick.AddListener(func_OnResetDataClick);
+            }
+
+            RefreshDynamicUI();
         }
 
         /// <summary>
-        /// [기능]: 수치 더하기 버튼 클릭 시 드롭다운에서 선택된 이벤트의 ID를 추출하여 진행도를 비동기로 가산합니다.
+        /// [기능]: +1일 시간 경과 버튼 이벤트 핸들러입니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 드롭다운 기반 ID 파싱 및 비동기 가산 지시
         /// </summary>
-        public async void func_OnAddProgressClick()
+        public void func_OnAddOneDayClick()
         {
-            if (m_viewModel != null && m_eventIdDropdown != null && m_amountInput != null)
+            if (m_viewModel != null)
             {
-                if (m_eventIdDropdown.options.Count == 0)
-                {
-                    return;
-                }
-
-                string selectedText = m_eventIdDropdown.options[m_eventIdDropdown.value].text;
-                string evId = string.Empty;
-                
-                int openBracket = selectedText.IndexOf('[');
-                int closeBracket = selectedText.IndexOf(']');
-                if (openBracket >= 0 && closeBracket > openBracket)
-                {
-                    evId = selectedText.Substring(openBracket + 1, closeBracket - openBracket - 1);
-                }
-
-                if (!string.IsNullOrEmpty(evId))
-                {
-                    int.TryParse(m_amountInput.text, out int amt);
-                    await m_viewModel.SimulateAddProgressAsync(evId, amt);
-                }
+                m_viewModel.SimulateTimeOffset(1);
+                RefreshDynamicUI();
             }
         }
 
         /// <summary>
-        /// [기능]: 데이터 리셋 버튼 클릭 시 전체 세이브 삭제 및 모델 갱신을 비동기로 지시합니다. func_ 접두사 준수.
+        /// [기능]: +7일 시간 경과 버튼 이벤트 핸들러입니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
         /// </summary>
-        public async void func_OnResetClick()
+        public void func_OnAddSevenDaysClick()
+        {
+            if (m_viewModel != null)
+            {
+                m_viewModel.SimulateTimeOffset(7);
+                RefreshDynamicUI();
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 가상 시간 리셋 버튼 이벤트 핸들러입니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public void func_OnResetTimeClick()
+        {
+            if (m_viewModel != null)
+            {
+                m_viewModel.ResetTimeOffset();
+                RefreshDynamicUI();
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 전체 데이터 리셋 버튼 이벤트 핸들러입니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public async void func_OnResetDataClick()
         {
             if (m_viewModel != null)
             {
                 await m_viewModel.ResetAllDataAsync();
+                RefreshDynamicUI();
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 슬라이드 드로어 열기/닫기 토글 처리를 실행합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public void func_ToggleDrawer()
+        {
+            m_isDrawerOpen = !m_isDrawerOpen;
+
+            if (m_slideCoroutine != null)
+            {
+                StopCoroutine(m_slideCoroutine);
+            }
+
+            float targetX = m_isDrawerOpen ? 0f : -m_drawerWidth;
+            m_slideCoroutine = StartCoroutine(SlideDrawer(new Vector2(targetX, 0f)));
+            UpdateToggleText();
+        }
+        #endregion
+
+        #region 내부 렌더링 및 애니메이션
+        /// <summary>
+        /// [기능]: 드로어 패널의 anchoredPosition을 코루틴을 통해 부드럽게 보간 이동시킵니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private IEnumerator SlideDrawer(Vector2 targetPosition)
+        {
+            if (m_drawerPanel == null) yield break;
+
+            Vector2 startPosition = m_drawerPanel.anchoredPosition;
+            float elapsedTime = 0f;
+
+            while (elapsedTime < m_slideDuration)
+            {
+                elapsedTime += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsedTime / m_slideDuration);
+                m_drawerPanel.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, t);
+                yield return null;
+            }
+
+            m_drawerPanel.anchoredPosition = targetPosition;
+            m_slideCoroutine = null;
+        }
+
+        /// <summary>
+        /// [기능]: 현재 드로어 개폐 상태에 맞춰 토글 버튼 텍스트를 기호로 변경합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void UpdateToggleText()
+        {
+            if (m_drawerToggleText != null)
+            {
+                m_drawerToggleText.text = m_isDrawerOpen ? "<" : ">";
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 현재 생성된 모든 동적 UI를 지우고, 뷰모델의 최신 상태를 받아와 2열 그리드 구조로 보기 쉽게 재배치합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void RefreshDynamicUI()
+        {
+            if (m_contentParent == null || m_viewModel == null) return;
+
+            // 1. 기존 생성물 클리어
+            for (int i = 0; i < m_spawnedItems.Count; i++)
+            {
+                if (m_spawnedItems[i] != null) Destroy(m_spawnedItems[i]);
+            }
+            m_spawnedItems.Clear();
+
+            // 2. 리워드 현황 동적 렌더링 (2열 Grid 배치)
+            if (m_rewardStatusTextPrefab != null)
+            {
+                var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                titleText.text = "--- [보유 재화 현황] ---";
+                titleText.alignment = TextAlignmentOptions.Center;
+                m_spawnedItems.Add(titleText.gameObject);
+
+                // Grid Container 생성
+                var gridGo = new GameObject("StatusGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+                gridGo.transform.SetParent(m_contentParent, false);
+                m_spawnedItems.Add(gridGo);
+
+                var grid = gridGo.GetComponent<GridLayoutGroup>();
+                grid.cellSize = new Vector2(195f, 35f);
+                grid.spacing = new Vector2(10f, 8f);
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = 2;
+                grid.childAlignment = TextAnchor.UpperLeft;
+
+                var fitter = gridGo.GetComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                var statusDict = m_viewModel.GetRewardStatus();
+                foreach (var kvp in statusDict)
+                {
+                    var txt = Instantiate(m_rewardStatusTextPrefab, gridGo.transform);
+                    txt.text = $"• {kvp.Key}: <color=#FFD700>{kvp.Value}</color>";
+                    txt.alignment = TextAlignmentOptions.Left;
+                }
+
+                // StatusGrid 바로 아래에 3종의 소모(사용) 시뮬레이션 버튼을 순차적으로 배치하여 직관적 재화 소모 유도
+                if (m_actionButtonPrefab != null)
+                {
+                    // 1. 이벤트 포인트 소모 버튼
+                    var spendEventBtn = Instantiate(m_actionButtonPrefab, m_contentParent);
+                    var txt1 = spendEventBtn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (txt1 != null)
+                    {
+                        txt1.text = "[소모] 이벤트 포인트 40 소모";
+                        txt1.fontSize = 13f;
+                    }
+                    spendEventBtn.onClick.AddListener(async () =>
+                    {
+                        await m_viewModel.SimulateSpendPointsAsync(40);
+                        RefreshDynamicUI();
+                    });
+                    m_spawnedItems.Add(spendEventBtn.gameObject);
+
+                    // 2. 시즌 포인트 소모 버튼
+                    var spendSeasonBtn = Instantiate(m_actionButtonPrefab, m_contentParent);
+                    var txt2 = spendSeasonBtn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (txt2 != null)
+                    {
+                        txt2.text = "[소모] 시즌 포인트 50 소모";
+                        txt2.fontSize = 13f;
+                    }
+                    spendSeasonBtn.onClick.AddListener(async () =>
+                    {
+                        await m_viewModel.SimulateSpendSeasonPointsAsync(50);
+                        RefreshDynamicUI();
+                    });
+                    m_spawnedItems.Add(spendSeasonBtn.gameObject);
+
+                    // 3. 재화(Credit) 소모 버튼
+                    var spendCreditBtn = Instantiate(m_actionButtonPrefab, m_contentParent);
+                    var txt3 = spendCreditBtn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (txt3 != null)
+                    {
+                        txt3.text = "[소모] 재화 100 소모";
+                        txt3.fontSize = 13f;
+                    }
+                    spendCreditBtn.onClick.AddListener(async () =>
+                    {
+                        await m_viewModel.SimulateSpendCreditsAsync(100);
+                        RefreshDynamicUI();
+                    });
+                    m_spawnedItems.Add(spendCreditBtn.gameObject);
+                }
+            }
+
+            // 3. 액션 트리거 동적 렌더링 (2열 Grid 배치)
+            if (m_actionButtonPrefab != null)
+            {
+                if (m_rewardStatusTextPrefab != null)
+                {
+                    // 구분을 위한 간격용 투명 텍스트 배치
+                    var spaceText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    spaceText.text = "";
+                    m_spawnedItems.Add(spaceText.gameObject);
+
+                    var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    titleText.text = "--- [행동 모의 트리거] ---";
+                    titleText.alignment = TextAlignmentOptions.Center;
+                    m_spawnedItems.Add(titleText.gameObject);
+                }
+
+                // Grid Container 생성
+                var gridGo = new GameObject("ActionGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+                gridGo.transform.SetParent(m_contentParent, false);
+                m_spawnedItems.Add(gridGo);
+
+                var grid = gridGo.GetComponent<GridLayoutGroup>();
+                grid.cellSize = new Vector2(195f, 50f);
+                grid.spacing = new Vector2(10f, 10f);
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = 2;
+                grid.childAlignment = TextAnchor.UpperLeft;
+
+                var fitter = gridGo.GetComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                string[] actionTypes = m_viewModel.GetAvailableActionTypes();
+                for (int i = 0; i < actionTypes.Length; i++)
+                {
+                    string actionType = actionTypes[i];
+                    var btn = Instantiate(m_actionButtonPrefab, gridGo.transform);
+                    
+                    var btnText = btn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (btnText != null) 
+                    {
+                        btnText.text = $"{actionType}";
+                        btnText.fontSize = 14f;
+                    }
+
+                    btn.onClick.AddListener(async () => 
+                    {
+                        await m_viewModel.SimulateActionAsync(actionType);
+                        RefreshDynamicUI();
+                    });
+
+                    m_spawnedItems.Add(btn.gameObject);
+                }
             }
         }
         #endregion
     }
 }
+

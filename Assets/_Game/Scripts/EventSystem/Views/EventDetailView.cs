@@ -139,23 +139,36 @@ namespace BePex.EventSystem.Views
 
             if (m_descText != null)
             {
+                m_descText.color = Color.black;
                 var sb = new System.Text.StringBuilder();
+
+                // 1. 상세내용 출력
                 sb.AppendLine(def.eventDescription);
                 sb.AppendLine();
-                sb.AppendLine("🎁 획득 가능 보상:");
-                
+
+                // 2. 보상 x 개수 출력 (한글 보상 유형 매핑 적용)
                 if (def.rewards != null && def.rewards.Count > 0)
                 {
                     for (int i = 0; i < def.rewards.Count; i++)
                     {
-                        sb.AppendLine(string.Format("- {0} x{1}", def.rewards[i].displayName, def.rewards[i].amount));
+                        string typeName = def.rewards[i].rewardType;
+                        string rewardName = def.rewards[i].displayName;
+
+                        // rewardType을 바탕으로 명확한 한글 표시명 환산
+                        if (System.Enum.TryParse<BePex.EventSystem.Data.RewardDefinitionSO.RewardType>(typeName, out var rType))
+                        {
+                            string disp = BePex.EventSystem.Utils.EnumDisplayHelper.GetDisplayName(rType);
+                            rewardName = disp == "재화 보상" ? "재화" : disp;
+                        }
+
+                        sb.AppendLine(string.Format("- {0} x{1}", rewardName, def.rewards[i].amount));
                     }
                 }
                 else
                 {
                     sb.AppendLine("- 없음");
                 }
-                
+
                 m_descText.text = sb.ToString();
             }
 
@@ -190,15 +203,15 @@ namespace BePex.EventSystem.Views
         /// <summary>
         /// [기능]: 사용자가 [보상 받기] 버튼을 클릭하였을 때 실행되는 UI Callback. 팝업 및 상세 뷰모델에 비동기로 청구를 인가합니다. func_ 접두사 준수.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: ClaimRewardAsync() 호출 시 모델 참조를 배제하고 매개변수 없이 호출하도록 변경
         /// </summary>
         public async void func_OnClaimButtonClick()
         {
-            if (m_viewModel != null && m_popupViewModel != null)
+            if (m_viewModel != null)
             {
-                await m_viewModel.ClaimRewardAsync(m_popupViewModel.GetPlayerReward());
+                await m_viewModel.ClaimRewardAsync();
             }
         }
         #endregion

@@ -91,9 +91,9 @@ namespace BePex.EventSystem.Infrastructure
             var eventModel = new EventModel(eventTableDTO, condFactory, rewFactory, timeProvider);
 
             // 6단계: MVVM ViewModels 수동 생성자 주입 생성
-            var listVM = new EventListViewModel(eventModel);
+            var listVM = new EventListViewModel(eventModel, saveSystem);
             var detailVM = new EventDetailViewModel(eventModel, saveSystem, playerReward);
-            var popupVM = new RewardPopupViewModel(playerReward, saveSystem);
+            var popupVM = new RewardPopupViewModel(playerReward, saveSystem, eventModel);
             var hudVM = new CurrencyHUDViewModel(playerReward);
 
             // 보상 데이터 변경에 따른 상단 HUD 동기화 이벤트 체이닝

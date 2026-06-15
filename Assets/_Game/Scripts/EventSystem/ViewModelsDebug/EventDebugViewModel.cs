@@ -173,6 +173,57 @@ namespace BePex.EventSystem.ViewModelsDebug
             }
             return result;
         }
+
+        /// <summary>
+        /// [기능]: 디버그 환경에서 인위적으로 플레이어의 포인트를 소모하고 저장소에 저장 및 UI를 갱신합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public async Awaitable SimulateSpendPointsAsync(int amount)
+        {
+            if (m_playerReward != null && m_saveSystem != null)
+            {
+                m_playerReward.totalPoints = Mathf.Max(0, m_playerReward.totalPoints - amount);
+                await m_saveSystem.SaveRewardStateAsync(m_playerReward);
+                if (m_hudViewModel != null)
+                {
+                    m_hudViewModel.NotifyCurrencyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 디버그 환경에서 인위적으로 플레이어의 시즌 포인트를 소모하고 저장소에 저장 및 UI를 갱신합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public async Awaitable SimulateSpendSeasonPointsAsync(int amount)
+        {
+            if (m_playerReward != null && m_saveSystem != null)
+            {
+                m_playerReward.totalSeasonPoints = Mathf.Max(0, m_playerReward.totalSeasonPoints - amount);
+                await m_saveSystem.SaveRewardStateAsync(m_playerReward);
+                if (m_hudViewModel != null)
+                {
+                    m_hudViewModel.NotifyCurrencyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 디버그 환경에서 인위적으로 플레이어의 크레딧(재화)을 소모하고 저장소에 저장 및 UI를 갱신합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public async Awaitable SimulateSpendCreditsAsync(int amount)
+        {
+            if (m_playerReward != null && m_saveSystem != null)
+            {
+                m_playerReward.totalCredits = Mathf.Max(0, m_playerReward.totalCredits - amount);
+                await m_saveSystem.SaveRewardStateAsync(m_playerReward);
+                if (m_hudViewModel != null)
+                {
+                    m_hudViewModel.NotifyCurrencyChanged();
+                }
+            }
+        }
         #endregion
     }
 }

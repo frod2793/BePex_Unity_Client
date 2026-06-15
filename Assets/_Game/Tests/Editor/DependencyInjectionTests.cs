@@ -43,10 +43,10 @@ namespace BePex.EventSystem.Tests
                 var eventModel = new EventModel(tableDTO, condFactory, rewFactory, timeProvider);
 
                 // 5. 뷰모델들 생성 (이 과정에서 누락된 매개변수나 예외가 발생하면 실패)
-                var listVM = new EventListViewModel(eventModel);
+                var listVM = new EventListViewModel(eventModel, saveSystem);
                 var playerReward = new PlayerRewardModel();
                 var detailVM = new EventDetailViewModel(eventModel, saveSystem, playerReward);
-                var popupVM = new RewardPopupViewModel(playerReward, saveSystem);
+                var popupVM = new RewardPopupViewModel(playerReward, saveSystem, eventModel);
                 var hudVM = new CurrencyHUDViewModel(playerReward);
                 var debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM);
 

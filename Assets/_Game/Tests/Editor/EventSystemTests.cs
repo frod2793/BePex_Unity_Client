@@ -58,7 +58,7 @@ namespace BePex.EventSystem.Tests
             tableDTO.events.Add(new EventDefinitionDTO { eventId = "evt_02", eventTitle = "테스트 2" });
 
             var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
-            var listVM = new EventListViewModel(model);
+            var listVM = new EventListViewModel(model, m_saveSystem);
 
             int count = listVM.GetEvents().Count;
             string title1 = listVM.GetEvents()[0].eventTitle;
@@ -554,7 +554,7 @@ namespace BePex.EventSystem.Tests
             var tableDTO = new EventTableDTO();
             var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
             
-            var listVM = new EventListViewModel(model);
+            var listVM = new EventListViewModel(model, m_saveSystem);
             int callCount = 0;
             listVM.OnListUpdated += () => { callCount++; };
 

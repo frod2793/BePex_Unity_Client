@@ -79,43 +79,6 @@ namespace BePex.EventSystem.ViewModels
         }
         #endregion
 
-        #region 가공 프로퍼티
-        /// <summary>
-        /// [기능]: 플레이어의 누적 경험치 반환 프로퍼티.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public int TotalExp
-        {
-            get
-            {
-                return m_playerReward.totalExp;
-            }
-        }
-
-        /// <summary>
-        /// [기능]: 플레이어의 누적 티켓 개수 반환 프로퍼티.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public int TotalTickets
-        {
-            get
-            {
-                return m_playerReward.totalTickets;
-            }
-        }
-
-        /// <summary>
-        /// [기능]: 플레이어의 누적 포인트 반환 프로퍼티.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public int TotalPoints
-        {
-            get
-            {
-                return m_playerReward.totalPoints;
-            }
-        }
-        #endregion
 
         #region 이벤트 (Observer)
         public event Action OnRewardDataChanged;

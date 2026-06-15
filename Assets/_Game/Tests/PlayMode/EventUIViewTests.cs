@@ -81,7 +81,7 @@ namespace BePex.EventSystem.Tests.PlayMode
             });
 
             m_model = new EventModel(tableDTO, condFactory, rewFactory, timeProvider);
-            m_listVM = new EventListViewModel(m_model);
+            m_listVM = new EventListViewModel(m_model, m_saveSystem);
             var playerReward = new PlayerRewardModel();
             m_detailVM = new EventDetailViewModel(m_model, m_saveSystem, playerReward);
 

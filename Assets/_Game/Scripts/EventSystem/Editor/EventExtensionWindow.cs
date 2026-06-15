@@ -219,10 +219,10 @@ namespace BePex.EventSystem.Conditions
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: ITimeProvider 의존성 주입 추가 반영
         /// </summary>
-        public {className}(int targetValue, ISaveSystem saveSystem, string eventId)
-            : base(targetValue, saveSystem, eventId)
+        public {className}(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId)
+            : base(targetValue, saveSystem, timeProvider, eventId)
         {{
         }}
         #endregion
@@ -289,13 +289,18 @@ namespace BePex.EventSystem.Rewards
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-15
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 다중 포인트 및 크레딧 업데이트에 따른 가이드 보완
         /// </summary>
         public override void Grant(PlayerRewardModel playerReward)
         {{
             if (playerReward != null)
             {{
                 // TODO: 플레이어 자산 모델에 {displayName} 지급하는 비즈니스 로직 작성 필요
+                // 예: playerReward.totalExp += m_amount; (경험치)
+                //     playerReward.totalTickets += m_amount; (티켓)
+                //     playerReward.totalPoints += m_amount; (이벤트 포인트)
+                //     playerReward.totalSeasonPoints += m_amount; (시즌 포인트)
+                //     playerReward.totalCredits += m_amount; (크레딧)
             }}
         }}
         #endregion

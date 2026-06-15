@@ -39,6 +39,7 @@ namespace BePex.EventSystem.ViewModels
             m_saveSystem = saveSystem;
             m_eventModel.OnEventProgressChanged += HandleEventProgressChanged;
             m_eventModel.OnEventRewardClaimed += HandleEventRewardClaimed;
+            m_eventModel.OnModelReloaded += HandleModelReloaded;
         }
         #endregion
 
@@ -78,8 +79,11 @@ namespace BePex.EventSystem.ViewModels
         public string GetSelectedEventId() => m_selectedEventId;
 
         /// <summary>
-        /// [기능]: 해당 이벤트의 보상이 이미 수령 완료되었는지 비동기로 검증합니다.
+        /// [기능]: 해당 이벤트의 모든 퀘스트 보상이 이미 수령 완료되었는지 비동기로 검증합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 모든 퀘스트의 수령 상태를 순회하도록 갱신
         /// </summary>
         public async Awaitable<bool> IsRewardClaimedAsync(string eventId)
         {
@@ -88,24 +92,47 @@ namespace BePex.EventSystem.ViewModels
                 return false;
             }
             var progress = await m_saveSystem.LoadProgressAsync(eventId);
-            return progress.isRewardClaimed;
-        }
-
-        /// <summary>
-        /// [기능]: 해당 이벤트가 완료되었으나 보상을 아직 받지 않아 수령 가능한 상태인지 비동기로 검증합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
-        public async Awaitable<bool> CanClaimRewardAsync(string eventId)
-        {
-            var cond = m_eventModel.GetCondition(eventId);
-            if (cond == null)
+            if (progress == null || progress.quests == null || progress.quests.Count == 0)
             {
                 return false;
             }
+            for (int i = 0; i < progress.quests.Count; i++)
+            {
+                if (progress.quests[i].isRewardClaimed == false)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-            bool completed = await cond.IsCompletedAsync();
-            bool claimed = await IsRewardClaimedAsync(eventId);
-            return completed && !claimed;
+        /// <summary>
+        /// [기능]: 해당 이벤트 내에 완료되었으나 보상을 아직 받지 않아 수령 가능한 퀘스트가 1개라도 존재하는지 비동기로 검증합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 퀘스트 리스트를 돌면서 수령 가능 대상이 있는지 판단
+        /// </summary>
+        public async Awaitable<bool> CanClaimRewardAsync(string eventId)
+        {
+            if (m_saveSystem == null)
+            {
+                return false;
+            }
+            var progress = await m_saveSystem.LoadProgressAsync(eventId);
+            if (progress == null || progress.quests == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < progress.quests.Count; i++)
+            {
+                var quest = progress.quests[i];
+                if (quest.isCompleted == true && quest.isRewardClaimed == false)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
         #endregion
 
@@ -134,11 +161,20 @@ namespace BePex.EventSystem.ViewModels
             OnListUpdated?.Invoke();
         }
         /// <summary>
+        /// [기능]: 모델이 리로드되었을 때 리스트 갱신 알림을 외부 View들에 전달합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void HandleModelReloaded()
+        {
+            OnListUpdated?.Invoke();
+        }
+
+        /// <summary>
         /// [기능]: 메모리 누수 방지를 위한 이벤트 언구독 로직.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: IDisposable 구현
+        /// [수정 내용]: OnModelReloaded 구독 해제 추가 및 IDisposable 구현
         /// </summary>
         public void Dispose()
         {
@@ -146,6 +182,7 @@ namespace BePex.EventSystem.ViewModels
             {
                 m_eventModel.OnEventProgressChanged -= HandleEventProgressChanged;
                 m_eventModel.OnEventRewardClaimed -= HandleEventRewardClaimed;
+                m_eventModel.OnModelReloaded -= HandleModelReloaded;
             }
         }
         #endregion

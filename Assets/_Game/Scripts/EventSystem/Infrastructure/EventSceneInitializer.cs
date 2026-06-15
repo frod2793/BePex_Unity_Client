@@ -46,16 +46,17 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 비즈니스 로직 및 ViewModel 인스턴스를 순차 수동 DI 생성 조립하고 각 View에 바인드합니다. 어드레서블을 통해 비동기로 테이블을 다운로드합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: EventDetailViewModel 생성자에 playerReward를 넘겨주도록 DI 조립 변경
+        /// [수정 내용]: QuestConditionFactory 및 QuestRewardFactory 사용으로 DI 조립 갱신
         /// </summary>
         private async Awaitable InitializeAsync()
         {
             // 1단계: 디버그 옵션에 따른 저장 장치 및 시간 제공자 선택
-            ISaveSystem saveSystem = (m_useDebugMode && m_debugView != null) 
+            ISaveSystem rawSaveSystem = (m_useDebugMode && m_debugView != null) 
                 ? new InMemorySaveSystem() 
                 : new JsonSaveSystem();
+            ISaveSystem saveSystem = new CachedSaveSystem(rawSaveSystem);
                 
             ITimeProvider timeProvider = (m_useDebugMode && m_debugView != null)
                 ? new BePex.EventSystem.Infrastructure.DebugTimeProvider()
@@ -81,8 +82,8 @@ namespace BePex.EventSystem.Infrastructure
             }
 
             // 3단계: 조건 및 보상 Factory 생성
-            var condFactory = new ConditionFactory(saveSystem, timeProvider);
-            var rewFactory = new RewardFactory();
+            var condFactory = new QuestConditionFactory(saveSystem, timeProvider);
+            var rewFactory = new QuestRewardFactory();
 
             // 4단계: 비동기로 유저 누적 보상 정보 로드
             var playerReward = await saveSystem.LoadRewardStateAsync();

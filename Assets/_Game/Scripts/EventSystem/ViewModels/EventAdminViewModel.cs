@@ -16,6 +16,8 @@ namespace BePex.EventSystem.ViewModels
         #region 이벤트 정의
         public event Action OnEventListChanged;
         public event Action<string> OnEventSelected;
+        public event Action OnQuestListChanged;
+        public event Action<string> OnQuestSelected;
         public event Action<string> OnErrorOccurred;
         public event Action<bool> OnSaveCompleted;
         public event Action<bool> OnUploadCompleted;
@@ -24,6 +26,7 @@ namespace BePex.EventSystem.ViewModels
         #region 내부 필드
         private EventTableDTO m_eventTable;
         private string m_selectedEventId;
+        private string m_selectedQuestId;
         private readonly IFirebaseUploadService m_firebaseService;
         #endregion
 
@@ -40,6 +43,7 @@ namespace BePex.EventSystem.ViewModels
             m_firebaseService = firebaseService;
             m_eventTable = new EventTableDTO();
             m_selectedEventId = string.Empty;
+            m_selectedQuestId = string.Empty;
         }
         #endregion
 
@@ -62,6 +66,7 @@ namespace BePex.EventSystem.ViewModels
                 m_eventTable = new EventTableDTO();
             }
             m_selectedEventId = string.Empty;
+            m_selectedQuestId = string.Empty;
             if (OnEventListChanged != null)
             {
                 OnEventListChanged.Invoke();
@@ -125,6 +130,7 @@ namespace BePex.EventSystem.ViewModels
         public void SelectEvent(string eventId)
         {
             m_selectedEventId = eventId;
+            m_selectedQuestId = string.Empty;
             if (OnEventSelected != null)
             {
                 OnEventSelected.Invoke(m_selectedEventId);
@@ -134,9 +140,9 @@ namespace BePex.EventSystem.ViewModels
         /// <summary>
         /// [기능]: 디폴트 정보의 신규 이벤트를 추가 생성하고 활성화 상태로 만듭니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: Quest-related 네이밍 적용
         /// </summary>
         public void AddNewEvent()
         {
@@ -149,8 +155,17 @@ namespace BePex.EventSystem.ViewModels
                 eventIconAddress = "item_Sheet[item_Sheet_0]",
                 startDate = DateTime.Now.ToString("yyyy-MM-dd"),
                 endDate = DateTime.Now.AddDays(7).ToString("yyyy-MM-dd"),
-                condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 10 },
-                rewards = new List<RewardDefinitionDTO>()
+                quests = new List<QuestDefinitionDTO>()
+                {
+                    new QuestDefinitionDTO
+                    {
+                        questId = $"quest_{newId}_1",
+                        questTitle = "기본 퀘스트",
+                        questDescription = "적을 처치하세요.",
+                        condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 10 },
+                        rewards = new List<RewardDefinitionDTO>()
+                    }
+                }
             };
 
             m_eventTable.events.Add(newEvent);
@@ -201,9 +216,9 @@ namespace BePex.EventSystem.ViewModels
         /// <summary>
         /// [기능]: 편집 폼을 통해 넘어온 데이터로 이벤트를 갱신합니다. ID 중복 확인 유효성 검사가 동반됩니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: DTO 변경에 따라 condition/rewards 대입을 quests 리스트 대입으로 개편
         /// </summary>
         public void UpdateSelectedEvent(EventDefinitionDTO updatedData)
         {
@@ -220,8 +235,7 @@ namespace BePex.EventSystem.ViewModels
                 current.eventIconAddress = updatedData.eventIconAddress;
                 current.startDate = updatedData.startDate;
                 current.endDate = updatedData.endDate;
-                current.condition = updatedData.condition;
-                current.rewards = updatedData.rewards;
+                current.quests = updatedData.quests;
 
                 if (current.eventId != updatedData.eventId)
                 {
@@ -253,6 +267,168 @@ namespace BePex.EventSystem.ViewModels
                 }
             }
         }
+
+        #region 퀘스트 관리 로직
+        /// <summary>
+        /// [기능]: 선택 중인 단일 퀘스트를 반환합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public QuestDefinitionDTO GetSelectedQuest()
+        {
+            var ev = GetSelectedEvent();
+            if (ev == null || string.IsNullOrEmpty(m_selectedQuestId))
+            {
+                return null;
+            }
+            for (int i = 0; i < ev.quests.Count; i++)
+            {
+                if (ev.quests[i].questId == m_selectedQuestId)
+                {
+                    return ev.quests[i];
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// [기능]: 특정 퀘스트 ID를 선택하고 이벤트를 통지합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public void SelectQuest(string questId)
+        {
+            m_selectedQuestId = questId;
+            if (OnQuestSelected != null)
+            {
+                OnQuestSelected.Invoke(m_selectedQuestId);
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 현재 선택된 이벤트에 신규 퀘스트를 추가합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public void AddNewQuest()
+        {
+            var ev = GetSelectedEvent();
+            if (ev == null)
+            {
+                return;
+            }
+
+            string newId = $"quest_{DateTime.Now.Ticks}";
+            var newQuest = new QuestDefinitionDTO
+            {
+                questId = newId,
+                questTitle = "새로운 퀘스트",
+                questDescription = "퀘스트 설명을 입력하세요.",
+                condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 10 },
+                rewards = new List<RewardDefinitionDTO>()
+            };
+
+            ev.quests.Add(newQuest);
+            SelectQuest(newId);
+            
+            if (OnQuestListChanged != null)
+            {
+                OnQuestListChanged.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 특정 ID의 퀘스트를 삭제하고 목록을 리렌더링하도록 노출합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public void RemoveQuest(string questId)
+        {
+            var ev = GetSelectedEvent();
+            if (ev == null)
+            {
+                return;
+            }
+
+            int targetIndex = -1;
+            for (int i = 0; i < ev.quests.Count; i++)
+            {
+                if (ev.quests[i].questId == questId)
+                {
+                    targetIndex = i;
+                    break;
+                }
+            }
+
+            if (targetIndex != -1)
+            {
+                ev.quests.RemoveAt(targetIndex);
+                if (m_selectedQuestId == questId)
+                {
+                    m_selectedQuestId = string.Empty;
+                }
+                
+                if (OnQuestListChanged != null)
+                {
+                    OnQuestListChanged.Invoke();
+                }
+                if (OnQuestSelected != null)
+                {
+                    OnQuestSelected.Invoke(m_selectedQuestId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 편집 폼을 통해 넘어온 데이터로 퀘스트를 갱신합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public void UpdateSelectedQuest(QuestDefinitionDTO updatedData)
+        {
+            if (updatedData == null)
+            {
+                return;
+            }
+
+            var current = GetSelectedQuest();
+            if (current != null)
+            {
+                current.questTitle = updatedData.questTitle;
+                current.questDescription = updatedData.questDescription;
+                current.condition = updatedData.condition;
+                current.rewards = updatedData.rewards;
+
+                if (current.questId != updatedData.questId)
+                {
+                    bool isDuplicate = false;
+                    var ev = GetSelectedEvent();
+                    if (ev != null)
+                    {
+                        for (int i = 0; i < ev.quests.Count; i++)
+                        {
+                            if (ev.quests[i].questId == updatedData.questId && ev.quests[i] != current)
+                            {
+                                isDuplicate = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isDuplicate)
+                    {
+                        if (OnErrorOccurred != null)
+                        {
+                            OnErrorOccurred.Invoke("[EventAdminViewModel] 중복된 퀘스트 ID가 존재합니다.");
+                        }
+                        return;
+                    }
+                    current.questId = updatedData.questId;
+                    m_selectedQuestId = updatedData.questId;
+                }
+
+                if (OnQuestListChanged != null)
+                {
+                    OnQuestListChanged.Invoke();
+                }
+            }
+        }
+        #endregion
 
         /// <summary>
         /// [기능]: 현재 테이블 정보를 JSON으로 직렬화하여 로컬 디스크 파일에 비동기로 덤프합니다.

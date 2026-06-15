@@ -164,6 +164,14 @@ namespace BePex.EventSystem.Views
                 // 1단계: 해당 어드레서블 주소가 카탈로그에 존재하는지 검증 (콘솔 에러 강제 출력 방지)
                 var locationsHandle = Addressables.LoadResourceLocationsAsync(address, typeof(Sprite));
                 var locations = await locationsHandle.Task;
+                if (this == null)
+                {
+                    if (locationsHandle.IsValid())
+                    {
+                        Addressables.Release(locationsHandle);
+                    }
+                    return;
+                }
                 bool exists = locations != null && locations.Count > 0;
                 Addressables.Release(locationsHandle);
 
@@ -175,6 +183,14 @@ namespace BePex.EventSystem.Views
                         address = "item_Sheet[item_Sheet_0]";
                         locationsHandle = Addressables.LoadResourceLocationsAsync(address, typeof(Sprite));
                         locations = await locationsHandle.Task;
+                        if (this == null)
+                        {
+                            if (locationsHandle.IsValid())
+                            {
+                                Addressables.Release(locationsHandle);
+                            }
+                            return;
+                        }
                         exists = locations != null && locations.Count > 0;
                         Addressables.Release(locationsHandle);
                     }
@@ -193,6 +209,10 @@ namespace BePex.EventSystem.Views
                 // 2단계: 주소가 확인되었으므로 안전하게 실제 에셋 로드 시도
                 m_spriteLoadHandle = Addressables.LoadAssetAsync<Sprite>(address);
                 Sprite sprite = await m_spriteLoadHandle.Task;
+                if (this == null)
+                {
+                    return;
+                }
                 if (targetImage != null && sprite != null)
                 {
                     targetImage.sprite = sprite;
@@ -200,6 +220,10 @@ namespace BePex.EventSystem.Views
             }
             catch (Exception ex)
             {
+                if (this == null)
+                {
+                    return;
+                }
                 Debug.LogWarning($"[EventItemCell] 아이콘 스프라이트를 로드하지 못했습니다. 주소: {address}, 에러: {ex.Message}");
                 if (targetImage != null)
                 {
@@ -211,9 +235,9 @@ namespace BePex.EventSystem.Views
         /// <summary>
         /// [기능]: 해당 이벤트의 획득 및 수령 완료 상태를 비동기로 조회해 배경색 및 텍스트 색상을 상태별로 업데이트합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성 및 Allman Style 준수
+        /// [수정 내용]: 비동기 await 이후 GameObject 파괴로 인한 MissingReferenceException 방지 널 가드 추가
         /// </summary>
         private async void UpdateCellAppearanceAsync()
         {
@@ -224,7 +248,15 @@ namespace BePex.EventSystem.Views
 
             string eventId = m_definition.eventId;
             bool isClaimed = await m_viewModel.IsRewardClaimedAsync(eventId);
+            if (this == null)
+            {
+                return;
+            }
             bool canClaim = await m_viewModel.CanClaimRewardAsync(eventId);
+            if (this == null)
+            {
+                return;
+            }
 
             Image bgImage = m_backgroundImage;
             if (bgImage == null)

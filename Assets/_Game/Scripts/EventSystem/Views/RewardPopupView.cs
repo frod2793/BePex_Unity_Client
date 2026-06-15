@@ -83,7 +83,7 @@ namespace BePex.EventSystem.Views
         /// [마지막 수정 작성자]: 윤승종
         /// [수정 내용]: 최초 작성
         /// </summary>
-        public void func_OnShowPopup(string eventId)
+        public void func_OnShowPopup(string eventId, string questId)
         {
             if (m_popupRoot != null)
             {
@@ -92,7 +92,7 @@ namespace BePex.EventSystem.Views
 
             if (m_viewModel != null)
             {
-                m_viewModel.Refresh();
+                m_viewModel.Refresh(eventId, questId);
             }
         }
 

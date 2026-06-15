@@ -15,7 +15,7 @@ namespace BePex.EventSystem.Core
         #region 내부 필드
         private readonly SeasonPassDefinitionSO m_definition;
         private readonly ISaveSystem m_saveSystem;
-        private readonly RewardFactory m_rewardFactory;
+        private readonly QuestRewardFactory m_rewardFactory;
         
         private SeasonPassModel m_model;
         #endregion
@@ -28,11 +28,11 @@ namespace BePex.EventSystem.Core
         /// <summary>
         /// [기능]: 정의 파일, 세이브 모듈, 보상 팩토리를 주입받는 생성자.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: QuestRewardFactory 타입으로 변경
         /// </summary>
-        public SeasonPassManager(SeasonPassDefinitionSO definition, ISaveSystem saveSystem, RewardFactory rewardFactory)
+        public SeasonPassManager(SeasonPassDefinitionSO definition, ISaveSystem saveSystem, QuestRewardFactory rewardFactory)
         {
             m_definition = definition;
             m_saveSystem = saveSystem;
@@ -132,7 +132,7 @@ namespace BePex.EventSystem.Core
                 var rewardDef = isPremium ? levelDef.premiumReward : levelDef.freeReward;
                 if (rewardDef != null)
                 {
-                    IEventReward reward = m_rewardFactory.Create(rewardDef);
+                    IQuestReward reward = m_rewardFactory.Create(rewardDef);
                     if (reward != null)
                     {
                         var playerReward = await m_saveSystem.LoadRewardStateAsync();

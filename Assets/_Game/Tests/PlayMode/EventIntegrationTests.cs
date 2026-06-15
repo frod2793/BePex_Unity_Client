@@ -20,8 +20,8 @@ namespace BePex.EventSystem.Tests.PlayMode
     {
         private InMemorySaveSystem m_saveSystem;
         private MockTimeProvider m_timeProvider;
-        private ConditionFactory m_condFactory;
-        private RewardFactory m_rewardFactory;
+        private QuestConditionFactory m_condFactory;
+        private QuestRewardFactory m_rewardFactory;
         private EventModel m_model;
         private PlayerRewardModel m_playerReward;
         private EventDetailViewModel m_detailVM;
@@ -33,9 +33,9 @@ namespace BePex.EventSystem.Tests.PlayMode
         /// <summary>
         /// [기능]: 통합 테스트 구동에 수반되는 순수 C# 의존성 모듈들을 수동 조립 및 초기화합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 셋업 구성
+        /// [수정 내용]: Quest-related 팩토리 교체 및 퀘스트 기반 DTO 셋업 수정
         /// </summary>
         [SetUp]
         public void Setup()
@@ -43,8 +43,8 @@ namespace BePex.EventSystem.Tests.PlayMode
             m_saveSystem = new InMemorySaveSystem();
             m_timeProvider = new MockTimeProvider();
             m_timeProvider.CurrentTime = new System.DateTime(2026, 6, 15, 12, 0, 0); // 고정된 기준 시간
-            m_condFactory = new ConditionFactory(m_saveSystem, m_timeProvider);
-            m_rewardFactory = new RewardFactory();
+            m_condFactory = new QuestConditionFactory(m_saveSystem, m_timeProvider);
+            m_rewardFactory = new QuestRewardFactory();
 
             // 1. DTO 설계 및 데이터 모의 주입
             m_tableDTO = new EventTableDTO();
@@ -53,7 +53,13 @@ namespace BePex.EventSystem.Tests.PlayMode
             {
                 eventId = "evt_integration_test_id",
                 eventTitle = "통합 테스트 이벤트",
-                eventDescription = "9대 기능을 동시에 유기적으로 검증하는 통합 이벤트",
+                eventDescription = "9대 기능을 동시에 유기적으로 검증하는 통합 이벤트"
+            };
+
+            var questDto = new QuestDefinitionDTO
+            {
+                questId = "qst_integration_test_id",
+                questTitle = "통합 테스트 퀘스트",
                 condition = new ConditionDefinitionDTO
                 {
                     conditionType = "KillCount",
@@ -61,25 +67,26 @@ namespace BePex.EventSystem.Tests.PlayMode
                 }
             };
             
-            eventDto.rewards.Add(new RewardDefinitionDTO
+            questDto.rewards.Add(new RewardDefinitionDTO
             {
                 rewardType = "Point",
                 amount = 100,
                 displayName = "테스트포인트"
             });
-            eventDto.rewards.Add(new RewardDefinitionDTO
+            questDto.rewards.Add(new RewardDefinitionDTO
             {
                 rewardType = "SeasonPoint",
                 amount = 20,
                 displayName = "테스트시즌포인트"
             });
-            eventDto.rewards.Add(new RewardDefinitionDTO
+            questDto.rewards.Add(new RewardDefinitionDTO
             {
                 rewardType = "CreditReword",
                 amount = 5,
                 displayName = "테스트크레딧"
             });
 
+            eventDto.quests.Add(questDto);
             m_tableDTO.events.Add(eventDto);
 
             // 2. 모델 및 뷰모델 인스턴스 생성
@@ -98,9 +105,6 @@ namespace BePex.EventSystem.Tests.PlayMode
         /// <summary>
         /// [기능]: 사용 후 자원 정리 및 뷰모델 IDisposable 해제 처리.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 해제
         /// </summary>
         [TearDown]
         public void Teardown()
@@ -115,9 +119,9 @@ namespace BePex.EventSystem.Tests.PlayMode
         /// [기능]: NUnit 및 PlayMode 상에서 9대 핵심 시나리오가 데이터 무결성을 보장하며
         ///        유기적으로 관통 구동되는지 한 단계씩 확인하는 다단계 어서트 테스트.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 통합 시나리오 작성
+        /// [수정 내용]: 퀘스트 ID 매개변수 추가 전달 및 검증
         /// </summary>
         [UnityTest]
         public IEnumerator Test_Nine_Core_Features_Integrative_Flow()
@@ -134,7 +138,7 @@ namespace BePex.EventSystem.Tests.PlayMode
                     Assert.AreEqual("evt_integration_test_id", activeEvents[0].eventId, "[EventIntegrationTests] 활성 이벤트 ID가 일치하지 않습니다.");
 
                     // 2. 진행도 표시 검증
-                    var progressInfo = await m_detailVM.GetProgressInfoAsync();
+                    var progressInfo = await m_detailVM.GetProgressInfoAsync("qst_integration_test_id");
                     Assert.AreEqual(0, progressInfo.current, "[EventIntegrationTests] 초기 진척도는 0이어야 합니다.");
                     Assert.AreEqual(10, progressInfo.target, "[EventIntegrationTests] 목표 진척도는 10이어야 합니다.");
                     Assert.AreEqual(0f, progressInfo.ratio, "[EventIntegrationTests] 초기 진척 비율은 0f이어야 합니다.");
@@ -143,15 +147,15 @@ namespace BePex.EventSystem.Tests.PlayMode
 
                     Debug.Log("[EventIntegrationTests] ======= [2단계: 이벤트 조건 달성 및 완료 처리 검증] =======");
                     // 3. 진척도 가산 처리 (이벤트 완료 유도)
-                    await m_debugVM.SimulateAddProgressAsync("evt_integration_test_id", 10);
+                    await m_debugVM.SimulateAddProgressAsync("evt_integration_test_id", "qst_integration_test_id", 10);
                     
                     // 진행도 갱신 확인
-                    progressInfo = await m_detailVM.GetProgressInfoAsync();
+                    progressInfo = await m_detailVM.GetProgressInfoAsync("qst_integration_test_id");
                     Assert.AreEqual(10, progressInfo.current, "[EventIntegrationTests] 가산 후 진척도가 10이어야 합니다.");
                     Assert.AreEqual(1.0f, progressInfo.ratio, "[EventIntegrationTests] 가산 후 진척 비율은 1.0f이어야 합니다.");
 
                     // 4. 완료 상태 충족 확인
-                    bool canClaim = await m_detailVM.CanClaimRewardAsync();
+                    bool canClaim = await m_detailVM.CanClaimRewardAsync("qst_integration_test_id");
                     Assert.IsTrue(canClaim, "[EventIntegrationTests] 조건을 달성했으므로 보상 수령이 가능해야 합니다.");
                     Debug.Log("[EventIntegrationTests] 2단계 완료: 조건 가산 및 클리어 완료 판정 확인 완료.");
 
@@ -159,7 +163,7 @@ namespace BePex.EventSystem.Tests.PlayMode
                     Debug.Log("[EventIntegrationTests] ======= [3단계: 보상 수령 처리 및 이벤트 포인트 획득 검증] =======");
                     // 5. 보상 수령
                     Assert.AreEqual(0, m_playerReward.totalPoints, "[EventIntegrationTests] 초기 포인트는 0이어야 합니다.");
-                    await m_detailVM.ClaimRewardAsync();
+                    await m_detailVM.ClaimRewardAsync("qst_integration_test_id");
 
                     // 6. 보상 획득 및 수령 완료 처리 확인
                     Assert.AreEqual(100, m_playerReward.totalPoints, "[EventIntegrationTests] 보상 수령 후 포인트가 100이어야 합니다.");
@@ -174,18 +178,18 @@ namespace BePex.EventSystem.Tests.PlayMode
                     Assert.AreEqual("테스트시즌포인트", claimedRewards[1].displayName);
                     Assert.AreEqual("테스트크레딧", claimedRewards[2].displayName);
 
-                    bool isClaimed = await m_detailVM.IsRewardClaimedAsync();
+                    bool isClaimed = await m_detailVM.IsRewardClaimedAsync("qst_integration_test_id");
                     Assert.IsTrue(isClaimed, "[EventIntegrationTests] 수령 완료 상태가 참(true)이어야 합니다.");
                     Debug.Log("[EventIntegrationTests] 3단계 완료: 보상 갱신, 포인트/시즌포인트/크레딧 획득 및 팝업 뷰모델 연동 확인 완료.");
 
 
                     Debug.Log("[EventIntegrationTests] ======= [4단계: 이미 수령한 보상 중복 수령 방지 검증] =======");
                     // 7. 중복 수령 조건 거절 확인
-                    bool canClaimAgain = await m_detailVM.CanClaimRewardAsync();
+                    bool canClaimAgain = await m_detailVM.CanClaimRewardAsync("qst_integration_test_id");
                     Assert.IsFalse(canClaimAgain, "[EventIntegrationTests] 이미 수령한 이벤트는 다시 수령할 수 없어야 합니다.");
 
                     // 강제 재호출 시도 시 데이터에 영향이 없어야 함
-                    await m_detailVM.ClaimRewardAsync();
+                    await m_detailVM.ClaimRewardAsync("qst_integration_test_id");
                     Assert.AreEqual(100, m_playerReward.totalPoints, "[EventIntegrationTests] 중복 수령 거부로 인해 포인트가 증가하지 않아야 합니다.");
                     Debug.Log("[EventIntegrationTests] 4단계 완료: 이미 수령한 보상에 대한 중복 청구 차단 확인 완료.");
 
@@ -204,11 +208,11 @@ namespace BePex.EventSystem.Tests.PlayMode
                     loadedDetailVM.SetEvent("evt_integration_test_id");
 
                     // 새로 로드한 VM에서도 기존 수령 상태가 영속화되어 복구되는지 확인
-                    bool loadedClaimed = await loadedDetailVM.IsRewardClaimedAsync();
+                    bool loadedClaimed = await loadedDetailVM.IsRewardClaimedAsync("qst_integration_test_id");
                     Assert.IsTrue(loadedClaimed, "[EventIntegrationTests] 새로 인스턴싱하여 복구한 모델에서도 수령 이력이 그대로 로드되어야 합니다.");
 
                     // 누적 진행도 수치가 10으로 잘 불러와지는지 복합 검증
-                    var loadedProgress = await loadedDetailVM.GetProgressInfoAsync();
+                    var loadedProgress = await loadedDetailVM.GetProgressInfoAsync("qst_integration_test_id");
                     Assert.AreEqual(10, loadedProgress.current, "[EventIntegrationTests] 로드된 진행 수치가 10으로 일치하지 않습니다.");
                     
                     loadedDetailVM.Dispose();
@@ -232,10 +236,14 @@ namespace BePex.EventSystem.Tests.PlayMode
                 yield return null;
             }
         }
+
         /// <summary>
         /// [기능]: 다양한 난이도(목표치)와 여러 형태의 조건(KillCount, StageClear, Attendance)이 
         ///        동시에 존재할 때, 각각이 독립적으로 잘 가산되고 완료 처리되는지 검증합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 퀘스트 하위 DTO 생성 및 퀘스트 ID 개별 전달 검증
         /// </summary>
         [UnityTest]
         public IEnumerator Test_Multi_Condition_And_Difficulties()
@@ -248,29 +256,50 @@ namespace BePex.EventSystem.Tests.PlayMode
                     // 기존 이벤트 지우고 새로 세팅
                     m_tableDTO.events.Clear();
                     
-                    m_tableDTO.events.Add(new EventDefinitionDTO
+                    var easyEvent = new EventDefinitionDTO
                     {
                         eventId = "evt_easy_kill",
                         eventTitle = "쉬운 처치 미션",
-                        condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 5 }, // 난이도 하
-                        rewards = new System.Collections.Generic.List<RewardDefinitionDTO> { new RewardDefinitionDTO { rewardType = "Point", amount = 10 } }
-                    });
+                    };
+                    var easyQuest = new QuestDefinitionDTO
+                    {
+                        questId = "easy_quest_id",
+                        questTitle = "쉬운 퀘스트",
+                        condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 5 }
+                    };
+                    easyQuest.rewards.Add(new RewardDefinitionDTO { rewardType = "Point", amount = 10, displayName = "쉬운보상" });
+                    easyEvent.quests.Add(easyQuest);
+                    m_tableDTO.events.Add(easyEvent);
 
-                    m_tableDTO.events.Add(new EventDefinitionDTO
+                    var hardEvent = new EventDefinitionDTO
                     {
                         eventId = "evt_hard_stage",
                         eventTitle = "어려운 스테이지 클리어",
-                        condition = new ConditionDefinitionDTO { conditionType = "StageClear", targetValue = 50 }, // 난이도 상
-                        rewards = new System.Collections.Generic.List<RewardDefinitionDTO> { new RewardDefinitionDTO { rewardType = "Point", amount = 500 } }
-                    });
+                    };
+                    var hardQuest = new QuestDefinitionDTO
+                    {
+                        questId = "hard_quest_id",
+                        questTitle = "어려운 퀘스트",
+                        condition = new ConditionDefinitionDTO { conditionType = "StageClear", targetValue = 50 }
+                    };
+                    hardQuest.rewards.Add(new RewardDefinitionDTO { rewardType = "Point", amount = 500, displayName = "어려운보상" });
+                    hardEvent.quests.Add(hardQuest);
+                    m_tableDTO.events.Add(hardEvent);
 
-                    m_tableDTO.events.Add(new EventDefinitionDTO
+                    var midEvent = new EventDefinitionDTO
                     {
                         eventId = "evt_mid_attendance",
                         eventTitle = "출석 체크",
-                        condition = new ConditionDefinitionDTO { conditionType = "Attendance", targetValue = 3 }, // 난이도 중
-                        rewards = new System.Collections.Generic.List<RewardDefinitionDTO> { new RewardDefinitionDTO { rewardType = "Point", amount = 50 } }
-                    });
+                    };
+                    var midQuest = new QuestDefinitionDTO
+                    {
+                        questId = "mid_quest_id",
+                        questTitle = "출석 퀘스트",
+                        condition = new ConditionDefinitionDTO { conditionType = "Attendance", targetValue = 3 }
+                    };
+                    midQuest.rewards.Add(new RewardDefinitionDTO { rewardType = "Point", amount = 50, displayName = "출석보상" });
+                    midEvent.quests.Add(midQuest);
+                    m_tableDTO.events.Add(midEvent);
 
                     m_model.Reload();
 
@@ -278,22 +307,22 @@ namespace BePex.EventSystem.Tests.PlayMode
                     Assert.AreEqual(3, activeEvents.Count, "[Test_Multi_Condition] 활성화된 이벤트는 3개여야 합니다.");
 
                     // 1. 쉬운 미션 5만큼 달성 시도
-                    await m_debugVM.SimulateAddProgressAsync("evt_easy_kill", 5);
+                    await m_debugVM.SimulateAddProgressAsync("evt_easy_kill", "easy_quest_id", 5);
                     m_detailVM.SetEvent("evt_easy_kill");
-                    var easyProgress = await m_detailVM.GetProgressInfoAsync();
+                    var easyProgress = await m_detailVM.GetProgressInfoAsync("easy_quest_id");
                     Assert.AreEqual(5, easyProgress.current, "[Test_Multi_Condition] 쉬운 미션 진행도가 5여야 합니다.");
-                    Assert.IsTrue(await m_detailVM.CanClaimRewardAsync(), "[Test_Multi_Condition] 쉬운 미션은 완료되어야 합니다.");
+                    Assert.IsTrue(await m_detailVM.CanClaimRewardAsync("easy_quest_id"), "[Test_Multi_Condition] 쉬운 미션은 완료되어야 합니다.");
 
                     // 2. 어려운 미션은 아직 미완료인지 확인
                     m_detailVM.SetEvent("evt_hard_stage");
-                    var hardProgress = await m_detailVM.GetProgressInfoAsync();
+                    var hardProgress = await m_detailVM.GetProgressInfoAsync("hard_quest_id");
                     Assert.AreEqual(0, hardProgress.current, "[Test_Multi_Condition] 독립된 이벤트이므로 어려운 미션은 진행도가 0이어야 합니다.");
 
                     // 어려운 미션 20 달성
-                    await m_debugVM.SimulateAddProgressAsync("evt_hard_stage", 20);
-                    hardProgress = await m_detailVM.GetProgressInfoAsync();
+                    await m_debugVM.SimulateAddProgressAsync("evt_hard_stage", "hard_quest_id", 20);
+                    hardProgress = await m_detailVM.GetProgressInfoAsync("hard_quest_id");
                     Assert.AreEqual(20, hardProgress.current, "[Test_Multi_Condition] 어려운 미션 진행도가 20이어야 합니다.");
-                    Assert.IsFalse(await m_detailVM.CanClaimRewardAsync(), "[Test_Multi_Condition] 어려운 미션은 아직 완료되지 않아야 합니다.");
+                    Assert.IsFalse(await m_detailVM.CanClaimRewardAsync("hard_quest_id"), "[Test_Multi_Condition] 어려운 미션은 아직 완료되지 않아야 합니다.");
                     
                     Debug.Log("[EventIntegrationTests] 다중 난이도/조건 상호 독립성 및 가산 검증 완료");
                 }
@@ -320,6 +349,9 @@ namespace BePex.EventSystem.Tests.PlayMode
         /// [기능]: 이벤트 기간(startDate, endDate)을 다양하게 설정하고,
         ///        시간의 흐름에 따라 활성화/만료 처리가 정상적으로 이루어지는지 검증합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 퀘스트 하위 DTO 생성 셋업으로 수정
         /// </summary>
         [UnityTest]
         public IEnumerator Test_Time_Expiration_Scenarios()
@@ -332,31 +364,46 @@ namespace BePex.EventSystem.Tests.PlayMode
                     m_tableDTO.events.Clear();
                     
                     // 시작 전 이벤트
-                    m_tableDTO.events.Add(new EventDefinitionDTO
+                    var futureEvt = new EventDefinitionDTO
                     {
                         eventId = "evt_future",
                         startDate = "2026-07-01",
                         endDate = "2026-07-31",
+                    };
+                    futureEvt.quests.Add(new QuestDefinitionDTO
+                    {
+                        questId = "future_qst",
                         condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 1 }
                     });
+                    m_tableDTO.events.Add(futureEvt);
 
                     // 진행 중 이벤트
-                    m_tableDTO.events.Add(new EventDefinitionDTO
+                    var currentEvt = new EventDefinitionDTO
                     {
                         eventId = "evt_current",
                         startDate = "2026-06-01",
                         endDate = "2026-06-30",
+                    };
+                    currentEvt.quests.Add(new QuestDefinitionDTO
+                    {
+                        questId = "current_qst",
                         condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 1 }
                     });
+                    m_tableDTO.events.Add(currentEvt);
 
                     // 만료된 이벤트
-                    m_tableDTO.events.Add(new EventDefinitionDTO
+                    var expiredEvt = new EventDefinitionDTO
                     {
                         eventId = "evt_expired",
                         startDate = "2026-05-01",
                         endDate = "2026-05-31",
+                    };
+                    expiredEvt.quests.Add(new QuestDefinitionDTO
+                    {
+                        questId = "expired_qst",
                         condition = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 1 }
                     });
+                    m_tableDTO.events.Add(expiredEvt);
 
                     m_model.Reload();
 

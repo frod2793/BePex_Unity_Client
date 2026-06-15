@@ -13,25 +13,29 @@ namespace BePex.EventSystem.ViewsDebug
     public class EventDebugView : MonoBehaviour
     {
         #region UI 참조 (Inspector)
-        [Header("Scroll View Container")]
+        [Header("스크롤 뷰 컨테이너")]
         [SerializeField] private RectTransform m_contentParent;
         
-        [Header("Dynamic Prefabs")]
+        [Header("동적 프리팹")]
         [SerializeField] private Button m_actionButtonPrefab;
         [SerializeField] private TextMeshProUGUI m_rewardStatusTextPrefab;
 
-        [Header("Time & Data Controls")]
+        [Header("시간 및 데이터 제어")]
         [SerializeField] private Button m_addOneDayButton;
         [SerializeField] private Button m_addSevenDaysButton;
         [SerializeField] private Button m_resetTimeButton;
         [SerializeField] private Button m_resetDataButton;
 
-        [Header("Drawer Panel Settings (Left Sliding Panel)")]
+        [Header("드로어 패널 설정 (좌측 슬라이딩 패널)")]
         [SerializeField] private RectTransform m_drawerPanel;
         [SerializeField] private Button m_drawerToggleButton;
         [SerializeField] private TextMeshProUGUI m_drawerToggleText;
         [SerializeField] private float m_slideDuration = 0.25f;
         [SerializeField] private float m_drawerWidth = 450f;
+
+        [Header("동적 UI 컨테이너 (선택 사항)")]
+        [SerializeField] private RectTransform m_statusGridContainer;
+        [SerializeField] private RectTransform m_actionGridContainer;
         #endregion
 
         #region 내부 필드
@@ -43,7 +47,7 @@ namespace BePex.EventSystem.ViewsDebug
 
         #region 유니티 생명주기
         /// <summary>
-        /// [기능]: 드로어 패널의 앵커, 피벗, 자식 위치 및 토글 레이아웃을 초기 자동 설정하며, 2x2 컨트롤 그리드 및 flexibleHeight 스크롤 뷰를 구성합니다.
+        /// [기능]: 드로어 패널의 앵커 및 토글 이벤트 리스너를 바인딩하고 스크롤 뷰 레이아웃 요소를 제어합니다.
         /// [작성자]: 윤승종
         /// </summary>
         private void Awake()
@@ -69,41 +73,7 @@ namespace BePex.EventSystem.ViewsDebug
                 m_drawerPanel.anchoredPosition = new Vector2(-m_drawerWidth, 0f);
             }
 
-            // ControlPanel을 2x2 그리드로 구성하여 넓은 공간 활용 및 글씨 겹침 방지
-            if (m_addOneDayButton != null)
-            {
-                var controlPanel = m_addOneDayButton.transform.parent as RectTransform;
-                if (controlPanel != null)
-                {
-                    var horizontalLayout = controlPanel.GetComponent<HorizontalLayoutGroup>();
-                    if (horizontalLayout != null)
-                    {
-                        DestroyImmediate(horizontalLayout);
-                    }
-
-                    var grid = controlPanel.GetComponent<GridLayoutGroup>();
-                    if (grid == null)
-                    {
-                        grid = controlPanel.gameObject.AddComponent<GridLayoutGroup>();
-                    }
-
-                    grid.cellSize = new Vector2(195f, 40f);
-                    grid.spacing = new Vector2(10f, 10f);
-                    grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-                    grid.constraintCount = 2;
-                    grid.childAlignment = TextAnchor.UpperLeft;
-
-                    var fitter = controlPanel.GetComponent<ContentSizeFitter>();
-                    if (fitter == null)
-                    {
-                        fitter = controlPanel.gameObject.AddComponent<ContentSizeFitter>();
-                    }
-                    fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                    fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-                }
-            }
-
-            // ScrollView가 남는 세로 공간을 전부 채우도록 flexibleHeight 주입 (Squish 현상 복구)
+            // ScrollView가 남는 세로 공간을 전부 채우도록 flexibleHeight 주입
             if (m_contentParent != null)
             {
                 var viewport = m_contentParent.parent as RectTransform;
@@ -123,7 +93,7 @@ namespace BePex.EventSystem.ViewsDebug
                 }
             }
 
-            // 토글 버튼은 VerticalLayoutGroup의 영향을 받지 않도록 LayoutElement 배치 제외 설정
+            // 토글 버튼은 VerticalLayoutGroup의 영향을 받지 않도록 ignoreLayout 설정
             if (m_drawerToggleButton != null)
             {
                 var layoutElement = m_drawerToggleButton.gameObject.GetComponent<LayoutElement>();
@@ -146,7 +116,7 @@ namespace BePex.EventSystem.ViewsDebug
                 m_drawerToggleButton.onClick.AddListener(func_ToggleDrawer);
             }
 
-            // 레이아웃 그룹 여백 패딩 및 간격 조정 (너비 확장에 맞춰 가독성 극대화)
+            // 레이아웃 그룹 여백 패딩 및 간격 조정
             var layout = GetComponent<VerticalLayoutGroup>();
             if (layout != null)
             {
@@ -305,14 +275,14 @@ namespace BePex.EventSystem.ViewsDebug
         }
 
         /// <summary>
-        /// [기능]: 현재 생성된 모든 동적 UI를 지우고, 뷰모델의 최신 상태를 받아와 2열 그리드 구조로 보기 쉽게 재배치합니다.
+        /// [기능]: 현재 생성된 모든 동적 UI를 지우고, 뷰모델의 최신 상태를 받아와 2열 그리드 구조로 보기 쉽게 재배치합니다. (컨테이너 캐싱 및 GC 최적화 적용)
         /// [작성자]: 윤승종
         /// </summary>
         private void RefreshDynamicUI()
         {
             if (m_contentParent == null || m_viewModel == null) return;
 
-            // 1. 기존 생성물 클리어
+            // 1. 기존 생성물 클리어 (수동 스폰된 것들 정리)
             for (int i = 0; i < m_spawnedItems.Count; i++)
             {
                 if (m_spawnedItems[i] != null) Destroy(m_spawnedItems[i]);
@@ -322,88 +292,134 @@ namespace BePex.EventSystem.ViewsDebug
             // 2. 리워드 현황 동적 렌더링 (2열 Grid 배치)
             if (m_rewardStatusTextPrefab != null)
             {
-                var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
-                titleText.text = "--- [보유 재화 현황] ---";
-                titleText.alignment = TextAlignmentOptions.Center;
-                m_spawnedItems.Add(titleText.gameObject);
+                Transform statusTargetParent = m_contentParent;
+                
+                // 만약 고정된 상태 그리드 컨테이너가 지정되어 있다면 하위 자식을 비우고 재사용
+                if (m_statusGridContainer != null)
+                {
+                    for (int i = m_statusGridContainer.childCount - 1; i >= 0; i--)
+                    {
+                        Destroy(m_statusGridContainer.GetChild(i).gameObject);
+                    }
+                    statusTargetParent = m_statusGridContainer;
+                }
+                else
+                {
+                    var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    titleText.text = "--- [보유 재화 현황] ---";
+                    titleText.alignment = TextAlignmentOptions.Center;
+                    m_spawnedItems.Add(titleText.gameObject);
 
-                // Grid Container 생성
-                var gridGo = new GameObject("StatusGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
-                gridGo.transform.SetParent(m_contentParent, false);
-                m_spawnedItems.Add(gridGo);
+                    // 폴백: Grid Container 동적 생성
+                    var gridGo = new GameObject("StatusGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+                    gridGo.transform.SetParent(m_contentParent, false);
+                    m_spawnedItems.Add(gridGo);
 
-                var grid = gridGo.GetComponent<GridLayoutGroup>();
-                grid.cellSize = new Vector2(195f, 35f);
-                grid.spacing = new Vector2(10f, 8f);
-                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-                grid.constraintCount = 2;
-                grid.childAlignment = TextAnchor.UpperLeft;
+                    var grid = gridGo.GetComponent<GridLayoutGroup>();
+                    grid.cellSize = new Vector2(195f, 35f);
+                    grid.spacing = new Vector2(10f, 8f);
+                    grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                    grid.constraintCount = 2;
+                    grid.childAlignment = TextAnchor.UpperLeft;
 
-                var fitter = gridGo.GetComponent<ContentSizeFitter>();
-                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                    var fitter = gridGo.GetComponent<ContentSizeFitter>();
+                    fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                    fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                    statusTargetParent = gridGo.transform;
+                }
 
                 var statusDict = m_viewModel.GetRewardStatus();
                 foreach (var kvp in statusDict)
                 {
-                    var txt = Instantiate(m_rewardStatusTextPrefab, gridGo.transform);
+                    var txt = Instantiate(m_rewardStatusTextPrefab, statusTargetParent);
                     txt.text = $"• {kvp.Key}: <color=#FFD700>{kvp.Value}</color>";
                     txt.alignment = TextAlignmentOptions.Left;
+                    if (m_statusGridContainer == null)
+                    {
+                        m_spawnedItems.Add(txt.gameObject);
+                    }
                 }
             }
 
             // 3. 액션 트리거 동적 렌더링 (2열 Grid 배치)
             if (m_actionButtonPrefab != null)
             {
-                if (m_rewardStatusTextPrefab != null)
+                Transform actionTargetParent = m_contentParent;
+
+                // 만약 고정된 액션 그리드 컨테이너가 지정되어 있다면 하위 자식을 비우고 재사용
+                if (m_actionGridContainer != null)
                 {
-                    // 구분을 위한 간격용 투명 텍스트 배치
-                    var spaceText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
-                    spaceText.text = "";
-                    m_spawnedItems.Add(spaceText.gameObject);
-
-                    var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
-                    titleText.text = "--- [행동 모의 트리거] ---";
-                    titleText.alignment = TextAlignmentOptions.Center;
-                    m_spawnedItems.Add(titleText.gameObject);
+                    for (int i = m_actionGridContainer.childCount - 1; i >= 0; i--)
+                    {
+                        Destroy(m_actionGridContainer.GetChild(i).gameObject);
+                    }
+                    actionTargetParent = m_actionGridContainer;
                 }
+                else
+                {
+                    if (m_rewardStatusTextPrefab != null)
+                    {
+                        var spaceText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                        spaceText.text = "";
+                        m_spawnedItems.Add(spaceText.gameObject);
 
-                // Grid Container 생성
-                var gridGo = new GameObject("ActionGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
-                gridGo.transform.SetParent(m_contentParent, false);
-                m_spawnedItems.Add(gridGo);
+                        var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                        titleText.text = "--- [행동 모의 트리거] ---";
+                        titleText.alignment = TextAlignmentOptions.Center;
+                        m_spawnedItems.Add(titleText.gameObject);
+                    }
 
-                var grid = gridGo.GetComponent<GridLayoutGroup>();
-                grid.cellSize = new Vector2(195f, 50f);
-                grid.spacing = new Vector2(10f, 10f);
-                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-                grid.constraintCount = 2;
-                grid.childAlignment = TextAnchor.UpperLeft;
+                    // 폴백: Grid Container 동적 생성
+                    var gridGo = new GameObject("ActionGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+                    gridGo.transform.SetParent(m_contentParent, false);
+                    m_spawnedItems.Add(gridGo);
 
-                var fitter = gridGo.GetComponent<ContentSizeFitter>();
-                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                    var grid = gridGo.GetComponent<GridLayoutGroup>();
+                    grid.cellSize = new Vector2(195f, 50f);
+                    grid.spacing = new Vector2(10f, 10f);
+                    grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                    grid.constraintCount = 2;
+                    grid.childAlignment = TextAnchor.UpperLeft;
+
+                    var fitter = gridGo.GetComponent<ContentSizeFitter>();
+                    fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                    fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                    actionTargetParent = gridGo.transform;
+                }
 
                 string[] actionTypes = m_viewModel.GetAvailableActionTypes();
                 for (int i = 0; i < actionTypes.Length; i++)
                 {
                     string actionType = actionTypes[i];
-                    var btn = Instantiate(m_actionButtonPrefab, gridGo.transform);
+                    var btn = Instantiate(m_actionButtonPrefab, actionTargetParent);
                     
                     var btnText = btn.GetComponentInChildren<TextMeshProUGUI>();
                     if (btnText != null) 
                     {
-                        btnText.text = $"{actionType}";
+                        if (actionType == "Attendance")
+                        {
+                            btnText.text = "날짜 추가";
+                        }
+                        else
+                        {
+                            btnText.text = $"{actionType}";
+                        }
                         btnText.fontSize = 14f;
                     }
 
                     btn.onClick.AddListener(async () => 
                     {
                         await m_viewModel.SimulateActionAsync(actionType);
+                        if (this == null) return;
                         RefreshDynamicUI();
                     });
 
-                    m_spawnedItems.Add(btn.gameObject);
+                    if (m_actionGridContainer == null)
+                    {
+                        m_spawnedItems.Add(btn.gameObject);
+                    }
                 }
             }
         }

@@ -36,8 +36,8 @@ namespace BePex.EventSystem.Tests
                 var tableDTO = new EventTableDTO();
 
                 // 3. 팩토리 생성
-                var condFactory = new ConditionFactory(saveSystem, timeProvider);
-                var rewFactory = new RewardFactory();
+                var condFactory = new QuestConditionFactory(saveSystem, timeProvider);
+                var rewFactory = new QuestRewardFactory();
 
                 // 4. 모델 생성
                 var eventModel = new EventModel(tableDTO, condFactory, rewFactory, timeProvider);

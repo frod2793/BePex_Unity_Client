@@ -177,11 +177,11 @@ namespace BePex.EventSystem.Editor
         }
 
         /// <summary>
-        /// [기능]: 새로운 Condition C# 클래스 소스 코드를 생성합니다.
+        /// [기능]: 새로운 QuestCondition C# 클래스 소스 코드를 생성합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: BaseQuestCondition 및 [QuestCondition] 어트리뷰트, 5인자 생성자 구조로 변경
         /// </summary>
         private void func_CreateConditionClass(string typeName, string displayName)
         {
@@ -191,7 +191,7 @@ namespace BePex.EventSystem.Editor
                 Directory.CreateDirectory(folderPath);
             }
 
-            string className = $"{typeName}Condition";
+            string className = $"{typeName}QuestCondition";
             string filePath = Path.Combine(folderPath, $"{className}.cs");
 
             if (File.Exists(filePath))
@@ -210,20 +210,34 @@ namespace BePex.EventSystem.Conditions
     /// [기능]: {displayName}을 이벤트 완료 조건으로 달성하였는지 판정하는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [EventCondition(ConditionDefinitionSO.ConditionType.{typeName})]
-    public class {className} : BaseEventCondition
+    [QuestCondition(ConditionDefinitionSO.ConditionType.{typeName})]
+    public class {className} : BaseQuestCondition
     {{
         #region 초기화
         /// <summary>
-        /// [기능]: 부모 생성자를 경유해 목표 수치, 세이브장치 및 해당 이벤트 ID를 매핑받습니다.
+        /// [기능]: 부모 생성자를 경유해 목표 수치, 세이브장치, 시간 제공자, 이벤트 ID 및 퀘스트 ID를 매핑받습니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: ITimeProvider 의존성 주입 추가 반영
+        /// [수정 내용]: 최초 작성
         /// </summary>
-        public {className}(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId)
-            : base(targetValue, saveSystem, timeProvider, eventId)
+        public {className}(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId, string questId)
+            : base(targetValue, saveSystem, timeProvider, eventId, questId)
         {{
+        }}
+        #endregion
+
+        #region 공개 메서드
+        /// <summary>
+        /// [기능]: 조건 달성 가능 여부를 확인합니다. 기본적으로 참을 반환하며 필요 시 재정의합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 가상 메서드 재정의
+        /// </summary>
+        public override bool CanAddProgress(Models.EventProgressModel progress)
+        {{
+            return true;
         }}
         #endregion
     }}
@@ -234,11 +248,11 @@ namespace BePex.EventSystem.Conditions
         }
 
         /// <summary>
-        /// [기능]: 새로운 Reward C# 클래스 소스 코드를 생성합니다.
+        /// [기능]: 새로운 QuestReward C# 클래스 소스 코드를 생성합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: BaseQuestReward 및 [QuestReward] 어트리뷰트 구조로 변경
         /// </summary>
         private void func_CreateRewardClass(string typeName, string displayName)
         {
@@ -248,7 +262,7 @@ namespace BePex.EventSystem.Conditions
                 Directory.CreateDirectory(folderPath);
             }
 
-            string className = $"{typeName}Reward";
+            string className = $"{typeName}QuestReward";
             string filePath = Path.Combine(folderPath, $"{className}.cs");
 
             if (File.Exists(filePath))
@@ -266,14 +280,14 @@ namespace BePex.EventSystem.Rewards
     /// [기능]: 플레이어 자산에 이벤트 완료 보상으로 {displayName}을 부여해 주는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [EventReward(RewardDefinitionSO.RewardType.{typeName})]
-    public class {className} : BaseEventReward
+    [QuestReward(RewardDefinitionSO.RewardType.{typeName})]
+    public class {className} : BaseQuestReward
     {{
         #region 초기화
         /// <summary>
         /// [기능]: 부모 생성자를 경유해 지급할 보상 수량 및 표시 이름을 주입받습니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
         /// [수정 내용]: 최초 작성
         /// </summary>
@@ -287,20 +301,16 @@ namespace BePex.EventSystem.Rewards
         /// <summary>
         /// [기능]: 플레이어의 누적 자산에 {displayName} 보상 수량을 더해 지급합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 다중 포인트 및 크레딧 업데이트에 따른 가이드 보완
+        /// [수정 내용]: 최신 AddCurrency API 활용 가이드 보완
         /// </summary>
         public override void Grant(PlayerRewardModel playerReward)
         {{
             if (playerReward != null)
             {{
                 // TODO: 플레이어 자산 모델에 {displayName} 지급하는 비즈니스 로직 작성 필요
-                // 예: playerReward.totalExp += m_amount; (경험치)
-                //     playerReward.totalTickets += m_amount; (티켓)
-                //     playerReward.totalPoints += m_amount; (이벤트 포인트)
-                //     playerReward.totalSeasonPoints += m_amount; (시즌 포인트)
-                //     playerReward.totalCredits += m_amount; (크레딧)
+                // 예: playerReward.AddCurrency(RewardDefinitionSO.RewardType.{typeName}, m_amount);
             }}
         }}
         #endregion

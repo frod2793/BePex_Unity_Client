@@ -1,82 +1,220 @@
 {
     "events": [
         {
-            "eventId": "evt_new_639170573017184380",
-            "eventTitle": "목표 킬달성",
-            "eventDescription": "학살의 시작",
-            "eventIconAddress": "item_Sheet[item_Sheet_0]",
-            "startDate": "2026-06-14",
-            "endDate": "2026-06-21",
-            "condition": {
-                "conditionType": "KillCount",
-                "targetValue": 10
-            },
-            "rewards": [
+            "eventId": "evt_new_639171703633951260",
+            "eventTitle": "일일 출석이벤트",
+            "eventDescription": "3일차 까지 출석하세요",
+            "eventIconAddress": "item_Sheet[item_Sheet_2]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
                 {
-                    "rewardType": "Ticket",
-                    "amount": 10,
-                    "displayName": "티티티케케ㅔ",
-                    "iconAddress": "item_Sheet[item_Sheet_0]"
+                    "questId": "quest_639171764754143620",
+                    "questTitle": "1일차출석",
+                    "questDescription": "1일차출석",
+                    "condition": {
+                        "conditionType": "Attendance",
+                        "targetValue": 1
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Exp",
+                            "amount": 10,
+                            "displayName": "경험치",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
+                },
+                {
+                    "questId": "quest_639171765036187070",
+                    "questTitle": "2일차 퀘스트",
+                    "questDescription": "2일차 퀘스트",
+                    "condition": {
+                        "conditionType": "Attendance",
+                        "targetValue": 2
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Point",
+                            "amount": 10,
+                            "displayName": "이벤트 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
+                },
+                {
+                    "questId": "quest_639171765227475230",
+                    "questTitle": "3일차 출석 ",
+                    "questDescription": "3일차 출석 ",
+                    "condition": {
+                        "conditionType": "Attendance",
+                        "targetValue": 3
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "SeasonPoint",
+                            "amount": 10,
+                            "displayName": "시즌 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        },
+                        {
+                            "rewardType": "Exp",
+                            "amount": 10,
+                            "displayName": "경험치",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
                 }
             ]
         },
         {
-            "eventId": "evt_new_639170824047511920",
-            "eventTitle": "2-1단계까지 도달 ",
-            "eventDescription": "목표 슷테이지 까지 도달하세요 ",
-            "eventIconAddress": "item_Sheet[item_Sheet_0]",
-            "startDate": "2026-06-15",
-            "endDate": "2026-06-22",
-            "condition": {
-                "conditionType": "StageClear",
-                "targetValue": 0
-            },
-            "rewards": [
+            "eventId": "evt_new_639171704937112570",
+            "eventTitle": "누적 출석 이벤트",
+            "eventDescription": "7일 동안 출석하세요",
+            "eventIconAddress": "item_Sheet[item_Sheet_5]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
                 {
-                    "rewardType": "Point",
-                    "amount": 100,
-                    "displayName": "포포포포",
-                    "iconAddress": "item_Sheet[item_Sheet_0]"
+                    "questId": "quest_639171813352963510",
+                    "questTitle": "7일 출석",
+                    "questDescription": "7일 출석",
+                    "condition": {
+                        "conditionType": "Attendance",
+                        "targetValue": 7
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Point",
+                            "amount": 10,
+                            "displayName": "이벤트 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
                 }
             ]
         },
         {
-            "eventId": "evt_new_639170824410257390",
-            "eventTitle": "출석체크",
-            "eventDescription": "출석하면됨",
+            "eventId": "evt_new_639171705567837440",
+            "eventTitle": "누적 행동 이벤트",
+            "eventDescription": "적을 처치 하세요 10마리",
             "eventIconAddress": "item_Sheet[item_Sheet_0]",
-            "startDate": "2026-06-15",
-            "endDate": "2026-06-22",
-            "condition": {
-                "conditionType": "Attendance",
-                "targetValue": 10
-            },
-            "rewards": [
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
                 {
-                    "rewardType": "Exp",
-                    "amount": 1000,
-                    "displayName": "경험치",
-                    "iconAddress": "item_Sheet[item_Sheet_0]"
+                    "questId": "quest_639171813563441870",
+                    "questTitle": "10킬",
+                    "questDescription": "10킬",
+                    "condition": {
+                        "conditionType": "KillCount",
+                        "targetValue": 10
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Point",
+                            "amount": 10,
+                            "displayName": "이벤트 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
                 }
             ]
         },
         {
-            "eventId": "evt_new_639171278509044050",
-            "eventTitle": "시즌패스 ",
-            "eventDescription": "이벤트 설명을 입력하세요.",
-            "eventIconAddress": "item_Sheet[item_Sheet_0]",
-            "startDate": "2026-06-15",
-            "endDate": "2026-06-22",
-            "condition": {
-                "conditionType": "MonthEvent",
-                "targetValue": 10
-            },
-            "rewards": [
+            "eventId": "evt_new_639171705958513520",
+            "eventTitle": "스테이지 클리어",
+            "eventDescription": "스테이지 50회 클리어",
+            "eventIconAddress": "item_Sheet[item_Sheet_18]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
                 {
-                    "rewardType": "CreditReword",
-                    "amount": 1000,
-                    "displayName": "돈줄겡 ",
-                    "iconAddress": "item_Sheet[item_Sheet_0]"
+                    "questId": "quest_639171813694779660",
+                    "questTitle": "10스테이지 클리어",
+                    "questDescription": "10스테이지 클리어",
+                    "condition": {
+                        "conditionType": "StageClear",
+                        "targetValue": 10
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "SeasonPoint",
+                            "amount": 10,
+                            "displayName": "시즌 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        },
+                        {
+                            "rewardType": "Point",
+                            "amount": 100,
+                            "displayName": "시즌 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "eventId": "evt_new_639171706311140380",
+            "eventTitle": "광고 시청",
+            "eventDescription": "광고 20회 시청",
+            "eventIconAddress": "item_Sheet[item_Sheet_0]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
+                {
+                    "questId": "quest_639171813940791570",
+                    "questTitle": "광고 5회",
+                    "questDescription": "광고 5회",
+                    "condition": {
+                        "conditionType": "ADMobEvent",
+                        "targetValue": 5
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Ticket",
+                            "amount": 10,
+                            "displayName": "티켓",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "eventId": "evt_new_639171706588979420",
+            "eventTitle": "기간 이벤트",
+            "eventDescription": "적 200마리 처치\n스테이지 30회 클리어.",
+            "eventIconAddress": "item_Sheet[item_Sheet_15]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
+                {
+                    "questId": "quest_639171814106152130",
+                    "questTitle": "15킬",
+                    "questDescription": "15킬",
+                    "condition": {
+                        "conditionType": "KillCount",
+                        "targetValue": 15
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Point",
+                            "amount": 10,
+                            "displayName": "이벤트 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
+                },
+                {
+                    "questId": "quest_639171814231850880",
+                    "questTitle": "15스테이지",
+                    "questDescription": "퀘스트 설명을 입력하세요.",
+                    "condition": {
+                        "conditionType": "StageClear",
+                        "targetValue": 15
+                    },
+                    "rewards": []
                 }
             ]
         }

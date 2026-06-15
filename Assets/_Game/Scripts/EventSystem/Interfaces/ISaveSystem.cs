@@ -53,5 +53,14 @@ namespace BePex.EventSystem.Interfaces
         /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
         /// </summary>
         Awaitable ClearAllAsync();
+
+        /// <summary>
+        /// [기능]: 이벤트의 진행 상태와 플레이어 자산 상태를 트랜잭션 단위로 일괄(Batch) 비동기 저장합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 트랜잭션 정합성 보장을 위해 신규 신설
+        /// </summary>
+        Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState);
     }
 }

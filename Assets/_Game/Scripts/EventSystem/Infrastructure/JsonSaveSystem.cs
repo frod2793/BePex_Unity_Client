@@ -132,6 +132,27 @@ namespace BePex.EventSystem.Infrastructure
             }
             await Awaitable.MainThreadAsync();
         }
+
+        /// <summary>
+        /// [기능]: 이벤트 진행 상태와 플레이어 자산 현황을 각각 JSON 파일에 비동기로 일괄 물리 저장합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 구현 및 Allman Style 준수
+        /// </summary>
+        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState)
+        {
+            string progressPath = Path.Combine(m_saveDir, $"event_progress_{eventId}.json");
+            string progressJson = JsonUtility.ToJson(progress, true);
+
+            string rewardPath = Path.Combine(m_saveDir, "player_rewards.json");
+            string rewardJson = JsonUtility.ToJson(rewardState, true);
+
+            await Awaitable.BackgroundThreadAsync();
+            File.WriteAllText(progressPath, progressJson);
+            File.WriteAllText(rewardPath, rewardJson);
+            await Awaitable.MainThreadAsync();
+        }
         #endregion
     }
 }

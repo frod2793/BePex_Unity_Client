@@ -87,6 +87,20 @@ namespace BePex.EventSystem.Infrastructure
             m_progressMap.Clear();
             m_rewardState = new PlayerRewardModel();
         }
+
+        /// <summary>
+        /// [기능]: 메모리 맵 상의 진행 상태와 플레이어 자산 현황을 일괄 동기화 갱신합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 구현
+        /// </summary>
+        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState)
+        {
+            await Awaitable.MainThreadAsync();
+            m_progressMap[eventId] = progress;
+            m_rewardState = rewardState;
+        }
         #endregion
     }
 }

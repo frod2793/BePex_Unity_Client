@@ -162,6 +162,21 @@ namespace BePex.EventSystem.Infrastructure
                 }
             }
         }
+
+        /// <summary>
+        /// [기능]: 진행도 모델과 플레이어 자산 모델을 서버 저장소로 비동기 일괄 전송(저장)합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 신설 구현
+        /// </summary>
+        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState)
+        {
+            // 실제 상용 환경에서는 이 둘을 하나의 POST API 또는 멀티파트 바디로 합치거나 일괄 배치 트랜잭션 주소로 쏠 수 있습니다.
+            // 여기서는 인터페이스 구현 완성을 위해 안전하게 병렬 처리 또는 직렬 처리를 모사합니다.
+            await SaveProgressAsync(eventId, progress);
+            await SaveRewardStateAsync(rewardState);
+        }
         #endregion
     }
 }

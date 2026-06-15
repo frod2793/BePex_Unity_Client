@@ -3,6 +3,7 @@ using BePex.EventSystem.Models;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.ViewModels;
+using BePex.EventSystem.Data;
 
 namespace BePex.EventSystem.ViewModelsDebug
 {
@@ -37,17 +38,17 @@ namespace BePex.EventSystem.ViewModelsDebug
 
         #region 공개 메서드
         /// <summary>
-        /// [기능]: 지정 이벤트 ID에 대해 인위적인 가산 처리를 도메인 단에 하달해 게이지 변화 및 클리어 상태를 비동기로 모의 조작합니다.
+        /// [기능]: 지정 이벤트 ID와 퀘스트 ID에 대해 인위적인 가산 처리를 도메인 단에 하달해 게이지 변화 및 클리어 상태를 비동기로 모의 조작합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: questId 매개변수 적용 및 전달
         /// </summary>
-        public async Awaitable SimulateAddProgressAsync(string eventId, int amount)
+        public async Awaitable SimulateAddProgressAsync(string eventId, string questId, int amount)
         {
             if (m_eventModel != null)
             {
-                await m_eventModel.Debug_AddProgressAsync(eventId, amount, m_saveSystem);
+                await m_eventModel.Debug_AddProgressAsync(eventId, questId, amount, m_saveSystem);
             }
         }
 
@@ -128,23 +129,55 @@ namespace BePex.EventSystem.ViewModelsDebug
         }
 
         /// <summary>
-        /// [기능]: 특정 타입의 행동이 발생했다고 모의하여, 조건 타입이 일치하는 모든 활성 이벤트의 진척도를 가산합니다.
+        /// [기능]: 특정 타입의 행동이 발생했다고 모의하여, 조건 타입이 일치하는 모든 활성 이벤트 하위의 퀘스트 진척도를 일괄 안전하게 가산합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 다중 이벤트 동시 처리 시뮬레이션 신규 추가
+        /// [수정 내용]: Attendance 타입 시뮬레이션 시 가상 시간을 자동으로 +1일 경과시킨 뒤 진행도를 가산하도록 변경
         /// </summary>
         public async Awaitable SimulateActionAsync(string actionType)
         {
+            #region Attendance 시뮬레이션 전용 자동 시간 가산
+            if (actionType == "Attendance")
+            {
+                if (m_timeProvider is BePex.EventSystem.Infrastructure.DebugTimeProvider debugTime)
+                {
+                    debugTime.AddDays(1);
+                    m_eventModel?.Reload();
+                }
+            }
+            #endregion
+
             var events = GetActiveEvents();
             for (int i = 0; i < events.Count; i++)
             {
                 var evt = events[i];
-                if (evt.condition != null && evt.condition.conditionType == actionType)
+                if (evt.quests != null)
                 {
-                    await m_eventModel.Debug_AddProgressAsync(evt.eventId, 1, m_saveSystem);
+                    // 이벤트 단위로 progress 데이터를 단 1회 로드합니다.
+                    var progress = await m_saveSystem.LoadProgressAsync(evt.eventId);
+                    bool isAnyProgressAdded = false;
+
+                    // 동일 조건에 매핑된 하위 퀘스트 진행도를 메모리 상에서 모두 누적합니다.
+                    for (int j = 0; j < evt.quests.Count; j++)
+                    {
+                        var quest = evt.quests[j];
+                        if (quest.condition != null && quest.condition.conditionType == actionType)
+                        {
+                            m_eventModel.Debug_AddProgressNoSave(evt.eventId, quest.questId, 1, progress);
+                            isAnyProgressAdded = true;
+                        }
+                    }
+
+                    // 메모리 상의 연산이 끝난 후, 단 1회만 세이브 파일에 씁니다.
+                    if (isAnyProgressAdded)
+                    {
+                        await m_saveSystem.SaveProgressAsync(evt.eventId, progress);
+                        m_eventModel.TriggerProgressChanged(evt.eventId); // 변경 사항 UI 일제 전파
+                    }
                 }
             }
+
             if (m_hudViewModel != null)
             {
                 m_hudViewModel.NotifyCurrencyChanged();
@@ -152,37 +185,33 @@ namespace BePex.EventSystem.ViewModelsDebug
         }
 
         /// <summary>
-        /// [기능]: 플레이어 리워드 모델의 수치형 자산들을 리플렉션으로 읽어들여 딕셔너리로 반환합니다.
+        /// [기능]: 플레이어 리워드 모델의 자산 상태 딕셔너리를 OCP 기반 안전 방식으로 조회하여 반환합니다. (리플렉션 완전 제거)
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: OCP 기반 재화 동적 모니터링을 위한 조회 메서드 추가
+        /// [수정 내용]: 리플렉션 조회를 GetBalances API로 대체
         /// </summary>
         public System.Collections.Generic.Dictionary<string, int> GetRewardStatus()
         {
-            var result = new System.Collections.Generic.Dictionary<string, int>();
-            if (m_playerReward == null) return result;
-
-            var fields = typeof(PlayerRewardModel).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            for (int i = 0; i < fields.Length; i++)
+            if (m_playerReward == null)
             {
-                if (fields[i].FieldType == typeof(int))
-                {
-                    result[fields[i].Name] = (int)fields[i].GetValue(m_playerReward);
-                }
+                return new System.Collections.Generic.Dictionary<string, int>();
             }
-            return result;
+            return m_playerReward.GetBalances();
         }
 
         /// <summary>
         /// [기능]: 디버그 환경에서 인위적으로 플레이어의 포인트를 소모하고 저장소에 저장 및 UI를 갱신합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: PlayerRewardModel.TrySpendCurrency 캡슐화 가드 적용
         /// </summary>
         public async Awaitable SimulateSpendPointsAsync(int amount)
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.totalPoints = Mathf.Max(0, m_playerReward.totalPoints - amount);
+                m_playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.Point, amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {
@@ -194,12 +223,15 @@ namespace BePex.EventSystem.ViewModelsDebug
         /// <summary>
         /// [기능]: 디버그 환경에서 인위적으로 플레이어의 시즌 포인트를 소모하고 저장소에 저장 및 UI를 갱신합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: PlayerRewardModel.TrySpendCurrency 캡슐화 가드 적용
         /// </summary>
         public async Awaitable SimulateSpendSeasonPointsAsync(int amount)
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.totalSeasonPoints = Mathf.Max(0, m_playerReward.totalSeasonPoints - amount);
+                m_playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.SeasonPoint, amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {
@@ -211,12 +243,15 @@ namespace BePex.EventSystem.ViewModelsDebug
         /// <summary>
         /// [기능]: 디버그 환경에서 인위적으로 플레이어의 크레딧(재화)을 소모하고 저장소에 저장 및 UI를 갱신합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: PlayerRewardModel.TrySpendCurrency 캡슐화 가드 적용
         /// </summary>
         public async Awaitable SimulateSpendCreditsAsync(int amount)
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.totalCredits = Mathf.Max(0, m_playerReward.totalCredits - amount);
+                m_playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.CreditReword, amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {

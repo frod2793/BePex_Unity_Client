@@ -15,6 +15,7 @@ namespace BePex.EventSystem.ViewModels
         private readonly ISaveSystem m_saveSystem;
         private readonly EventModel m_eventModel;
         private string m_lastClaimedEventId;
+        private string m_lastClaimedQuestId;
         #endregion
 
         #region 가공 프로퍼티
@@ -111,24 +112,43 @@ namespace BePex.EventSystem.ViewModels
         }
 
         /// <summary>
-        /// [기능]: 특정 이벤트 클리어 시점의 ID를 받아 캐싱하고 보상 변경 통지를 알립니다.
+        /// [기능]: 특정 이벤트 클리어 시점의 ID를 받아 캐싱하고 보상 변경 통지를 알립니다. (일괄 수령용)
         /// [작성자]: 윤승종
         /// </summary>
         public void Refresh(string eventId)
         {
             m_lastClaimedEventId = eventId;
+            m_lastClaimedQuestId = string.Empty;
             OnRewardDataChanged?.Invoke();
         }
 
         /// <summary>
-        /// [기능]: 마지막으로 획득한 이벤트의 보상 상세 목록 DTO 리스트를 반환합니다.
+        /// [기능]: 개별 퀘스트 보상 수령 시점의 ID들을 받아 캐싱하고 보상 변경 통지를 알립니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 개별 퀘스트 타겟팅 처리를 위한 오버로드 추가
+        /// </summary>
+        public void Refresh(string eventId, string questId)
+        {
+            m_lastClaimedEventId = eventId;
+            m_lastClaimedQuestId = questId;
+            OnRewardDataChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// [기능]: 마지막으로 획득한 이벤트의 모든 퀘스트 또는 특정 퀘스트의 보상 상세 목록 DTO 리스트를 병합하여 반환합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: m_lastClaimedQuestId가 활성화되어 있으면 해당 퀘스트의 보상만 노출하도록 개별 필터링 보완
         /// </summary>
         public System.Collections.Generic.List<DTOs.RewardDefinitionDTO> GetClaimedRewards()
         {
+            var claimedList = new System.Collections.Generic.List<DTOs.RewardDefinitionDTO>();
             if (m_eventModel == null || string.IsNullOrEmpty(m_lastClaimedEventId))
             {
-                return new System.Collections.Generic.List<DTOs.RewardDefinitionDTO>();
+                return claimedList;
             }
 
             var events = m_eventModel.GetActiveEvents();
@@ -136,11 +156,28 @@ namespace BePex.EventSystem.ViewModels
             {
                 if (events[i].eventId == m_lastClaimedEventId)
                 {
-                    return events[i].rewards;
+                    var definition = events[i];
+                    if (definition.quests != null)
+                    {
+                        for (int j = 0; j < definition.quests.Count; j++)
+                        {
+                            var quest = definition.quests[j];
+                            if (!string.IsNullOrEmpty(m_lastClaimedQuestId) && quest.questId != m_lastClaimedQuestId)
+                            {
+                                continue;
+                            }
+
+                            if (quest.rewards != null)
+                            {
+                                claimedList.AddRange(quest.rewards);
+                            }
+                        }
+                    }
+                    break;
                 }
             }
 
-            return new System.Collections.Generic.List<DTOs.RewardDefinitionDTO>();
+            return claimedList;
         }
         #endregion
     }

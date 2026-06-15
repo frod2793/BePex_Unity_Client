@@ -1,8 +1,3 @@
-/// <summary>
-/// [기능]: 이벤트 관리자 UI 씬의 모든 입력/갱신 시각 인터렉션을 제어하고 ViewModel을 중개하는 View 클래스.
-/// [작성자]: 윤승종
-/// </summary>
-
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -24,70 +19,70 @@ namespace BePex.EventSystem.Views
     {
         #region UI 참조 (Inspector) - 좌측 패널
         [Header("좌측 패널")]
-        // 생성된 이벤트 항목 셀 프리팹들이 배치될 스크롤 뷰의 콘텐츠 영역
         [SerializeField] private RectTransform m_eventListContent;
-        // 목록에 노출될 개별 이벤트 항목 셀 프리팹
         [SerializeField] private EventItemCell m_eventItemPrefab;
-        // 신규 이벤트를 생성하는 버튼
         [SerializeField] private Button m_addEventButton;
         #endregion
 
-        #region UI 참조 (Inspector) - 우측 패널
-        [Header("우측 패널 (상세 편집)")]
-        // 선택된 이벤트의 유무에 따라 활성/비활성화되는 상세 편집 패널 컨테이너
-        [SerializeField] private GameObject m_detailPanel;
-        // 이벤트 식별용 고유 ID 입력 필드
+        #region UI 참조 (Inspector) - 우측 패널 (이벤트 편집 모드)
+        [Header("우측 패널 (이벤트 편집 모드)")]
+        [SerializeField] private GameObject m_eventDetailPanel;
         [SerializeField] private TMP_InputField m_eventIdInput;
-        // 이벤트 제목 입력 필드
         [SerializeField] private TMP_InputField m_titleInput;
-        // 이벤트 상세 설명 입력 필드
         [SerializeField] private TMP_InputField m_descInput;
-        // 이벤트 아이콘 스프라이트의 어드레서블 주소 선택 드롭다운 (item_Sheet)
         [SerializeField] private TMP_Dropdown m_iconAddressDropdown;
-        // 이벤트 아이콘 썸네일 프리뷰 이미지
         [SerializeField] private Image m_iconAddressPreview;
-        // 이벤트 시작 일시 입력 필드 (yyyy-MM-dd)
         [SerializeField] private TMP_InputField m_startDateInput;
-        // 이벤트 종료 일시 입력 필드 (yyyy-MM-dd)
         [SerializeField] private TMP_InputField m_endDateInput;
 
-        [Header("조건 편집")]
-        // 이벤트 달성 조건의 종류를 선택하는 드롭다운 (KillCount, StageClear, Attendance)
+        [Header("퀘스트 목록 (이벤트 편집 모드)")]
+        [SerializeField] private RectTransform m_questListContent;
+        [SerializeField] private EventAdminQuestRowView m_questRowPrefab;
+        [SerializeField] private Button m_addQuestButton;
+        #endregion
+
+        #region UI 참조 (Inspector) - 우측 패널 (퀘스트 편집 모드)
+        [Header("우측 패널 (퀘스트 편집 모드)")]
+        [SerializeField] private GameObject m_questDetailPanel;
+        [SerializeField] private Button m_backToEventButton;
+        [SerializeField] private TMP_InputField m_questIdInput;
+        [SerializeField] private TMP_InputField m_questTitleInput;
+        [SerializeField] private TMP_InputField m_questDescInput;
+
+        [Header("조건 편집 (퀘스트 편집 모드)")]
         [SerializeField] private TMP_Dropdown m_condTypeDropdown;
-        // 조건 달성에 필요한 목표 수치 입력 필드
         [SerializeField] private TMP_InputField m_condTargetInput;
 
-        [Header("보상 편집")]
-        // 동적으로 생성될 보상 데이터 입력 행 프리팹들이 배치될 스크롤 뷰의 콘텐츠 영역
+        [Header("보상 편집 (퀘스트 편집 모드)")]
         [SerializeField] private RectTransform m_rewardListContent;
-        // 보상 개별 항목 데이터 입력을 위한 UI 행 프리팹
-        [SerializeField] private GameObject m_rewardRowPrefab;
-        // 해당 이벤트에 신규 지급 보상을 한 줄 추가하는 버튼
+        [SerializeField] private EventAdminRewardRowView m_rewardRowPrefab;
         [SerializeField] private Button m_addRewardButton;
 
-        [Header("신규 보상 추가 입력 영역")]
+        [Header("신규 보상 추가 입력 영역 (퀘스트 편집 모드)")]
         [SerializeField] private TMP_Dropdown m_newRewardTypeDropdown;
         [SerializeField] private TMP_InputField m_newRewardAmountInput;
         [SerializeField] private TMP_InputField m_newRewardNameInput;
         [SerializeField] private TMP_Dropdown m_newRewardIconDropdown;
         [SerializeField] private Image m_newRewardIconPreview;
+
+        [Header("퀘스트 상세 상단 전환 바")]
+        [SerializeField] private TMP_Dropdown m_questSelectDropdown;
+        [SerializeField] private Button m_addQuestInDetailButton;
+        [SerializeField] private Button m_deleteQuestInDetailButton;
         #endregion
 
         #region UI 참조 (Inspector) - 제어 바 & 상태 메시지
         [Header("하단 제어 바")]
-        // 로컬 event_table.json 파일에 작성된 데이터를 최종 덤프 저장하는 버튼
         [SerializeField] private Button m_saveLocalButton;
-        // 기획 수치 유효성 검사 통과 시 Firebase 서버에 비동기 가상 배포하는 버튼
         [SerializeField] private Button m_uploadFirebaseButton;
-        // 상세 편집 중인 타겟 이벤트를 목록 및 데이터에서 삭제하는 버튼
         [SerializeField] private Button m_removeEventButton;
-        // 로드, 저장, 배포 작업 결과 및 에러 경고를 표시하는 상태 텍스트
         [SerializeField] private TextMeshProUGUI m_statusText;
         #endregion
 
         #region 내부 필드
         private EventAdminViewModel m_viewModel;
         private readonly List<GameObject> m_spawnedItems = new List<GameObject>();
+        private readonly List<EventAdminQuestRowView> m_spawnedQuestRows = new List<EventAdminQuestRowView>();
         private readonly List<EventAdminRewardRowView> m_spawnedRewardRows = new List<EventAdminRewardRowView>();
         #endregion
 
@@ -95,9 +90,6 @@ namespace BePex.EventSystem.Views
         /// <summary>
         /// [기능]: 뷰모델 의존성을 바인딩하고 이벤트를 구독합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
         /// </summary>
         public void Bind(EventAdminViewModel viewModel)
         {
@@ -107,6 +99,8 @@ namespace BePex.EventSystem.Views
             {
                 m_viewModel.OnEventListChanged += func_OnEventListChanged;
                 m_viewModel.OnEventSelected += func_OnEventSelected;
+                m_viewModel.OnQuestListChanged += func_OnQuestListChanged;
+                m_viewModel.OnQuestSelected += func_OnQuestSelected;
                 m_viewModel.OnErrorOccurred += func_OnErrorOccurred;
                 m_viewModel.OnSaveCompleted += func_OnSaveCompleted;
                 m_viewModel.OnUploadCompleted += func_OnUploadCompleted;
@@ -156,6 +150,36 @@ namespace BePex.EventSystem.Views
                 m_removeEventButton.onClick.AddListener(func_OnRemoveEventClick);
             }
 
+            if (m_addQuestButton != null)
+            {
+                m_addQuestButton.onClick.RemoveAllListeners();
+                m_addQuestButton.onClick.AddListener(func_OnAddQuestClick);
+            }
+
+            if (m_addQuestInDetailButton != null)
+            {
+                m_addQuestInDetailButton.onClick.RemoveAllListeners();
+                m_addQuestInDetailButton.onClick.AddListener(func_OnAddQuestClick);
+            }
+
+            if (m_deleteQuestInDetailButton != null)
+            {
+                m_deleteQuestInDetailButton.onClick.RemoveAllListeners();
+                m_deleteQuestInDetailButton.onClick.AddListener(func_OnDeleteQuestInDetailClick);
+            }
+
+            if (m_questSelectDropdown != null)
+            {
+                m_questSelectDropdown.onValueChanged.RemoveAllListeners();
+                m_questSelectDropdown.onValueChanged.AddListener(func_OnQuestSelectDropdownChanged);
+            }
+
+            if (m_backToEventButton != null)
+            {
+                m_backToEventButton.onClick.RemoveAllListeners();
+                m_backToEventButton.onClick.AddListener(func_OnBackToEventClick);
+            }
+
             if (m_addRewardButton != null)
             {
                 m_addRewardButton.onClick.RemoveAllListeners();
@@ -174,41 +198,34 @@ namespace BePex.EventSystem.Views
                 m_uploadFirebaseButton.onClick.AddListener(func_OnUploadFirebaseClick);
             }
 
-            func_RegisterFormListeners();
+            func_RegisterEventFormListeners();
+            func_RegisterQuestFormListeners();
+
             func_OnEventListChanged();
             func_OnEventSelected(string.Empty);
         }
-        #endregion
 
-        #region 유니티 생명주기
-        /// <summary>
-        /// [기능]: 뷰 디바인딩 해제 및 뷰모델 이벤트 연결을 취소하여 메모리 누수를 방지합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void OnDestroy()
         {
             if (m_viewModel != null)
             {
                 m_viewModel.OnEventListChanged -= func_OnEventListChanged;
                 m_viewModel.OnEventSelected -= func_OnEventSelected;
+                m_viewModel.OnQuestListChanged -= func_OnQuestListChanged;
+                m_viewModel.OnQuestSelected -= func_OnQuestSelected;
                 m_viewModel.OnErrorOccurred -= func_OnErrorOccurred;
                 m_viewModel.OnSaveCompleted -= func_OnSaveCompleted;
                 m_viewModel.OnUploadCompleted -= func_OnUploadCompleted;
             }
+
+            if (m_questSelectDropdown != null)
+            {
+                m_questSelectDropdown.onValueChanged.RemoveAllListeners();
+            }
         }
         #endregion
 
-        #region 이벤트 구독 반응 UI 갱신
-        /// <summary>
-        /// [기능]: 뷰모델 내의 전체 이벤트 리스트가 변경되었을 때 좌측 Scroll View 항목을 갱신 렌더링합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
+        #region 이벤트 구독 반응 UI 갱신 (Event Mode)
         private void func_OnEventListChanged()
         {
             for (int i = 0; i < m_spawnedItems.Count; i++)
@@ -238,13 +255,6 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 목록 아이템 선택 클릭을 뷰모델에 전달합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnSelectItem(string eventId)
         {
             if (m_viewModel != null)
@@ -253,13 +263,6 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 뷰모델에서 특정 이벤트의 활성화 변경 신호를 보냈을 때 우측 상세 폼 데이터를 채우고 활성화합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnEventSelected(string eventId)
         {
             if (m_viewModel == null)
@@ -270,52 +273,144 @@ namespace BePex.EventSystem.Views
             var selected = m_viewModel.GetSelectedEvent();
             if (selected == null)
             {
-                if (m_detailPanel != null)
-                {
-                    m_detailPanel.SetActive(false);
-                }
+                if (m_eventDetailPanel != null) m_eventDetailPanel.SetActive(false);
+                if (m_questDetailPanel != null) m_questDetailPanel.SetActive(false);
                 return;
             }
 
-            if (m_detailPanel != null)
-            {
-                m_detailPanel.SetActive(true);
-            }
+            if (m_eventDetailPanel != null) m_eventDetailPanel.SetActive(true);
+            if (m_questDetailPanel != null) m_questDetailPanel.SetActive(false);
 
-            func_UnregisterFormListeners();
+            func_UnregisterEventFormListeners();
 
-            if (m_eventIdInput != null)
-            {
-                m_eventIdInput.text = selected.eventId;
-            }
-            if (m_titleInput != null)
-            {
-                m_titleInput.text = selected.eventTitle;
-            }
-            if (m_descInput != null)
-            {
-                m_descInput.text = selected.eventDescription;
-            }
+            if (m_eventIdInput != null) m_eventIdInput.text = selected.eventId;
+            if (m_titleInput != null) m_titleInput.text = selected.eventTitle;
+            if (m_descInput != null) m_descInput.text = selected.eventDescription;
             if (m_iconAddressDropdown != null)
             {
                 int iconIdx = ParseIconIndex(selected.eventIconAddress);
                 m_iconAddressDropdown.value = iconIdx;
                 func_UpdateIconAddressThumbnailWrapper(iconIdx);
             }
-            if (m_startDateInput != null)
+            if (m_startDateInput != null) m_startDateInput.text = selected.startDate;
+            if (m_endDateInput != null) m_endDateInput.text = selected.endDate;
+
+            func_RegisterEventFormListeners();
+            func_RenderQuests(selected.quests);
+        }
+
+        private void func_RenderQuests(List<QuestDefinitionDTO> quests)
+        {
+            if (m_questListContent != null)
             {
-                m_startDateInput.text = selected.startDate;
+                for (int i = m_questListContent.childCount - 1; i >= 0; i--)
+                {
+                    Destroy(m_questListContent.GetChild(i).gameObject);
+                }
             }
-            if (m_endDateInput != null)
+            m_spawnedQuestRows.Clear();
+
+            if (m_questListContent == null || m_questRowPrefab == null)
             {
-                m_endDateInput.text = selected.endDate;
+                return;
             }
+
+            for (int i = 0; i < quests.Count; i++)
+            {
+                var q = quests[i];
+                EventAdminQuestRowView rowView = Instantiate(m_questRowPrefab, m_questListContent);
+                if (rowView != null)
+                {
+                    rowView.Bind(q, func_OnEditQuestRow, func_OnRemoveQuestRow);
+                    m_spawnedQuestRows.Add(rowView);
+                }
+            }
+        }
+
+        private void func_OnEditQuestRow(string questId)
+        {
+            if (m_viewModel != null)
+            {
+                m_viewModel.SelectQuest(questId);
+            }
+        }
+
+        private void func_OnRemoveQuestRow(string questId)
+        {
+            if (m_viewModel != null)
+            {
+                m_viewModel.RemoveQuest(questId);
+            }
+        }
+        #endregion
+
+        #region 이벤트 구독 반응 UI 갱신 (Quest Mode)
+        private void func_OnQuestListChanged()
+        {
+            var selectedEvent = m_viewModel?.GetSelectedEvent();
+            if (selectedEvent != null)
+            {
+                func_RenderQuests(selectedEvent.quests);
+            }
+        }
+
+        private void func_OnQuestSelected(string questId)
+        {
+            if (m_viewModel == null)
+            {
+                return;
+            }
+
+            var selectedQuest = m_viewModel.GetSelectedQuest();
+            if (selectedQuest == null)
+            {
+                if (m_questDetailPanel != null) m_questDetailPanel.SetActive(false);
+                if (m_eventDetailPanel != null) m_eventDetailPanel.SetActive(true);
+                return;
+            }
+
+            if (m_eventDetailPanel != null) m_eventDetailPanel.SetActive(false);
+            if (m_questDetailPanel != null) m_questDetailPanel.SetActive(true);
+
+            // 퀘스트 선택 드롭다운 갱신
+            if (m_questSelectDropdown != null)
+            {
+                m_questSelectDropdown.onValueChanged.RemoveAllListeners();
+                m_questSelectDropdown.ClearOptions();
+
+                var selectedEvent = m_viewModel.GetSelectedEvent();
+                if (selectedEvent != null && selectedEvent.quests != null)
+                {
+                    var options = new List<TMP_Dropdown.OptionData>();
+                    int selectedIdx = 0;
+                    for (int i = 0; i < selectedEvent.quests.Count; i++)
+                    {
+                        var q = selectedEvent.quests[i];
+                        string display = $"{q.questId} : {q.questTitle}";
+                        options.Add(new TMP_Dropdown.OptionData(display));
+
+                        if (q.questId == selectedQuest.questId)
+                        {
+                            selectedIdx = i;
+                        }
+                    }
+                    m_questSelectDropdown.AddOptions(options);
+                    m_questSelectDropdown.value = selectedIdx;
+                }
+                m_questSelectDropdown.onValueChanged.AddListener(func_OnQuestSelectDropdownChanged);
+            }
+
+            func_UnregisterQuestFormListeners();
+
+            if (m_questIdInput != null) m_questIdInput.text = selectedQuest.questId;
+            if (m_questTitleInput != null) m_questTitleInput.text = selectedQuest.questTitle;
+            if (m_questDescInput != null) m_questDescInput.text = selectedQuest.questDescription;
 
             if (m_condTypeDropdown != null)
             {
                 int condIdx = 0;
-                string searchName = selected.condition.conditionType;
-                if (Enum.TryParse<ConditionDefinitionSO.ConditionType>(selected.condition.conditionType, true, out var typeEnum))
+                string searchName = selectedQuest.condition.conditionType;
+                if (Enum.TryParse<ConditionDefinitionSO.ConditionType>(selectedQuest.condition.conditionType, true, out var typeEnum))
                 {
                     searchName = EnumDisplayHelper.GetDisplayName(typeEnum);
                 }
@@ -333,23 +428,15 @@ namespace BePex.EventSystem.Views
 
             if (m_condTargetInput != null)
             {
-                m_condTargetInput.text = selected.condition.targetValue.ToString();
+                m_condTargetInput.text = selectedQuest.condition.targetValue.ToString();
             }
 
-            func_RegisterFormListeners();
-            func_RenderRewards(selected.rewards);
+            func_RegisterQuestFormListeners();
+            func_RenderRewards(selectedQuest.rewards);
         }
 
-        /// <summary>
-        /// [기능]: 보상 목록을 뷰 하이어라키 내에 동적으로 인스턴싱하고 바인딩합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_RenderRewards(List<RewardDefinitionDTO> rewards)
         {
-            // 기존 스폰된 모든 자식 오브젝트 소거 (메모리 누수 및 오정렬 방지)
             if (m_rewardListContent != null)
             {
                 for (int i = m_rewardListContent.childCount - 1; i >= 0; i--)
@@ -367,8 +454,7 @@ namespace BePex.EventSystem.Views
             for (int i = 0; i < rewards.Count; i++)
             {
                 var rew = rewards[i];
-                GameObject go = Instantiate(m_rewardRowPrefab, m_rewardListContent);
-                var rowView = go.GetComponent<EventAdminRewardRowView>();
+                EventAdminRewardRowView rowView = Instantiate(m_rewardRowPrefab, m_rewardListContent);
                 if (rowView != null)
                 {
                     rowView.Bind(rew, func_OnRemoveRewardRow);
@@ -377,34 +463,22 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 개별 보상 줄에서 삭제 요청이 넘어왔을 때 이를 소거하고 보상 리스트를 재생성합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnRemoveRewardRow(EventAdminRewardRowView row)
         {
             if (m_viewModel == null || row == null)
             {
                 return;
             }
-            var selected = m_viewModel.GetSelectedEvent();
-            if (selected != null)
+            var selectedQuest = m_viewModel.GetSelectedQuest();
+            if (selectedQuest != null)
             {
-                selected.rewards.Remove(row.GetDTO());
-                func_RenderRewards(selected.rewards);
+                selectedQuest.rewards.Remove(row.GetDTO());
+                func_RenderRewards(selectedQuest.rewards);
             }
         }
+        #endregion
 
-        /// <summary>
-        /// [기능]: 경고 발생 시 텍스트 컴포넌트의 컬러를 빨간색으로 변경하고 경고 내용을 갱신합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
+        #region 상태 메시지
         private void func_OnErrorOccurred(string error)
         {
             if (m_statusText != null)
@@ -414,13 +488,6 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 로컬 세이브 파일 출력 완료 결과를 하단 상태 창에 출력합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnSaveCompleted(bool success)
         {
             if (m_statusText != null)
@@ -430,13 +497,6 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: Firebase 비동기 업로드 완료 결과를 하단 상태 창에 출력합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnUploadCompleted(bool success)
         {
             if (m_statusText != null)
@@ -448,13 +508,6 @@ namespace BePex.EventSystem.Views
         #endregion
 
         #region 사용자 입력 버튼 콜백
-        /// <summary>
-        /// [기능]: 신규 이벤트 생성 버튼 클릭 핸들러.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnAddEventClick()
         {
             if (m_viewModel != null)
@@ -463,13 +516,6 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 이벤트 삭제 버튼 클릭 핸들러.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private void func_OnRemoveEventClick()
         {
             if (m_viewModel != null)
@@ -482,23 +528,74 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 사용자가 지정한 보상 종류, 수량, 노출명, 아이콘 주소를 입력받아 DTO를 생성하고 목록에 주입합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 기존 하드코딩 방식에서 UI 입력 수집 동적 빌드 방식으로 개편
-        /// </summary>
-        private void func_OnAddRewardClick()
+        private void func_OnAddQuestClick()
+        {
+            if (m_viewModel != null)
+            {
+                m_viewModel.AddNewQuest();
+            }
+        }
+
+        private void func_OnQuestSelectDropdownChanged(int index)
+        {
+            if (m_viewModel == null || m_questSelectDropdown == null)
+            {
+                return;
+            }
+
+            var selectedEvent = m_viewModel.GetSelectedEvent();
+            if (selectedEvent != null && index >= 0 && index < selectedEvent.quests.Count)
+            {
+                func_SubmitQuestFormChanges();
+                string targetQuestId = selectedEvent.quests[index].questId;
+                m_viewModel.SelectQuest(targetQuestId);
+            }
+        }
+
+        private void func_OnDeleteQuestInDetailClick()
         {
             if (m_viewModel == null)
             {
                 return;
             }
-            var selected = m_viewModel.GetSelectedEvent();
-            if (selected != null)
+
+            var selectedQuest = m_viewModel.GetSelectedQuest();
+            var selectedEvent = m_viewModel.GetSelectedEvent();
+            if (selectedQuest != null && selectedEvent != null)
             {
-                // 1) 드롭다운 한글 표시명을 DTO 저장용 영문 식별자로 변환
+                string targetQuestId = selectedQuest.questId;
+                m_viewModel.RemoveQuest(targetQuestId);
+
+                if (selectedEvent.quests.Count > 0)
+                {
+                    m_viewModel.SelectQuest(selectedEvent.quests[0].questId);
+                }
+                else
+                {
+                    func_OnBackToEventClick();
+                }
+            }
+        }
+
+        private void func_OnBackToEventClick()
+        {
+            if (m_viewModel != null)
+            {
+                var selectedEvent = m_viewModel.GetSelectedEvent();
+                if (selectedEvent != null)
+                {
+                    m_viewModel.SelectEvent(selectedEvent.eventId);
+                }
+            }
+        }
+
+        private void func_OnAddRewardClick()
+        {
+            if (m_viewModel == null) return;
+            
+            var selectedQuest = m_viewModel.GetSelectedQuest();
+            if (selectedQuest != null)
+            {
                 string rawType = "Exp";
                 if (m_newRewardTypeDropdown != null)
                 {
@@ -506,19 +603,18 @@ namespace BePex.EventSystem.Views
                     rawType = EnumDisplayHelper.GetEnumValue<RewardDefinitionSO.RewardType>(displayName).ToString();
                 }
 
-                // 2) 보상 수량 파싱
                 int amount = 10;
                 if (m_newRewardAmountInput != null)
                 {
                     int.TryParse(m_newRewardAmountInput.text, out amount);
                 }
 
-                // 3) 보상 노출명 및 어드레서블 아이콘 경로 획득
                 string displayNameField = m_newRewardNameInput != null ? m_newRewardNameInput.text : "경험치";
                 if (string.IsNullOrEmpty(displayNameField))
                 {
                     displayNameField = m_newRewardTypeDropdown != null ? m_newRewardTypeDropdown.options[m_newRewardTypeDropdown.value].text : "보상";
                 }
+                
                 string iconAddress = "item_Sheet[item_Sheet_0]";
                 if (m_newRewardIconDropdown != null)
                 {
@@ -533,18 +629,11 @@ namespace BePex.EventSystem.Views
                     iconAddress = iconAddress
                 };
 
-                selected.rewards.Add(newRew);
-                func_RenderRewards(selected.rewards);
+                selectedQuest.rewards.Add(newRew);
+                func_RenderRewards(selectedQuest.rewards);
 
-                // 4) 입력 UI 텍스트 초기화 (사용자 편의)
-                if (m_newRewardAmountInput != null)
-                {
-                    m_newRewardAmountInput.text = "10";
-                }
-                if (m_newRewardNameInput != null)
-                {
-                    m_newRewardNameInput.text = string.Empty;
-                }
+                if (m_newRewardAmountInput != null) m_newRewardAmountInput.text = "10";
+                if (m_newRewardNameInput != null) m_newRewardNameInput.text = string.Empty;
                 if (m_newRewardIconDropdown != null)
                 {
                     m_newRewardIconDropdown.value = 0;
@@ -553,176 +642,113 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 로컬 파일 저장 버튼 클릭 비동기 핸들러.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private async void func_OnSaveLocalClick()
         {
             if (m_viewModel != null)
             {
-                func_SubmitFormChanges();
-                if (m_statusText != null)
-                {
-                    m_statusText.text = "저장 중...";
-                }
+                func_SubmitEventFormChanges();
+                func_SubmitQuestFormChanges();
+                if (m_statusText != null) m_statusText.text = "저장 중...";
                 await m_viewModel.SaveToLocalFileAsync();
             }
         }
 
-        /// <summary>
-        /// [기능]: Firebase 서버 배포 버튼 클릭 비동기 핸들러.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
         private async void func_OnUploadFirebaseClick()
         {
             if (m_viewModel != null)
             {
-                func_SubmitFormChanges();
+                func_SubmitEventFormChanges();
+                func_SubmitQuestFormChanges();
+
+                // 1단계: 로컬 저장 선행
                 if (m_statusText != null)
                 {
-                    m_statusText.text = "업로드 중...";
+                    m_statusText.color = Color.white;
+                    m_statusText.text = "로컬 저장 중...";
                 }
+
+                bool saveSuccess = await m_viewModel.SaveToLocalFileAsync();
+                if (saveSuccess == false)
+                {
+                    if (m_statusText != null)
+                    {
+                        m_statusText.color = Color.red;
+                        m_statusText.text = "[EventAdminView] 로컬 저장 실패로 인해 서버 배포가 취소되었습니다.";
+                    }
+                    return;
+                }
+
+                // 2단계: 로컬 저장 성공 시 서버 업로드 개시
+                if (m_statusText != null)
+                {
+                    m_statusText.color = Color.white;
+                    m_statusText.text = "서버 배포 중...";
+                }
+
                 await m_viewModel.UploadToFirebaseAsync();
             }
         }
         #endregion
 
         #region 폼 입력 실시간 동기화
-        /// <summary>
-        /// [기능]: 우측 폼 입력 컴포넌트들의 데이터 변경 리스너를 일제히 등록합니다. 단일 행 중괄호 규칙 준수.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의 및 중괄호 보완
-        /// </summary>
-        private void func_RegisterFormListeners()
+        private void func_RegisterEventFormListeners()
         {
-            if (m_eventIdInput != null)
-            {
-                m_eventIdInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
-            }
-            if (m_titleInput != null)
-            {
-                m_titleInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
-            }
-            if (m_descInput != null)
-            {
-                m_descInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
-            }
-            if (m_iconAddressDropdown != null)
-            {
-                m_iconAddressDropdown.onValueChanged.AddListener(func_OnIconAddressDropdownChangedWrapper);
-            }
-            if (m_startDateInput != null)
-            {
-                m_startDateInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
-            }
-            if (m_endDateInput != null)
-            {
-                m_endDateInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
-            }
-            if (m_condTypeDropdown != null)
-            {
-                m_condTypeDropdown.onValueChanged.AddListener(func_OnDropdownValueChanged);
-            }
-            if (m_condTargetInput != null)
-            {
-                m_condTargetInput.onEndEdit.AddListener(func_OnFormInputEndEdit);
-            }
+            if (m_eventIdInput != null) m_eventIdInput.onEndEdit.AddListener(func_OnEventFormInputEndEdit);
+            if (m_titleInput != null) m_titleInput.onEndEdit.AddListener(func_OnEventFormInputEndEdit);
+            if (m_descInput != null) m_descInput.onEndEdit.AddListener(func_OnEventFormInputEndEdit);
+            if (m_iconAddressDropdown != null) m_iconAddressDropdown.onValueChanged.AddListener(func_OnIconAddressDropdownChangedWrapper);
+            if (m_startDateInput != null) m_startDateInput.onEndEdit.AddListener(func_OnEventFormInputEndEdit);
+            if (m_endDateInput != null) m_endDateInput.onEndEdit.AddListener(func_OnEventFormInputEndEdit);
         }
 
-        /// <summary>
-        /// [기능]: 리스너 등록을 해제하여 중복 감지를 차단합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의 및 중괄호 보완
-        /// </summary>
-        private void func_UnregisterFormListeners()
+        private void func_UnregisterEventFormListeners()
         {
-            if (m_eventIdInput != null)
-            {
-                m_eventIdInput.onEndEdit.RemoveAllListeners();
-            }
-            if (m_titleInput != null)
-            {
-                m_titleInput.onEndEdit.RemoveAllListeners();
-            }
-            if (m_descInput != null)
-            {
-                m_descInput.onEndEdit.RemoveAllListeners();
-            }
-            if (m_iconAddressDropdown != null)
-            {
-                m_iconAddressDropdown.onValueChanged.RemoveAllListeners();
-            }
-            if (m_startDateInput != null)
-            {
-                m_startDateInput.onEndEdit.RemoveAllListeners();
-            }
-            if (m_endDateInput != null)
-            {
-                m_endDateInput.onEndEdit.RemoveAllListeners();
-            }
-            if (m_condTypeDropdown != null)
-            {
-                m_condTypeDropdown.onValueChanged.RemoveAllListeners();
-            }
-            if (m_condTargetInput != null)
-            {
-                m_condTargetInput.onEndEdit.RemoveAllListeners();
-            }
+            if (m_eventIdInput != null) m_eventIdInput.onEndEdit.RemoveAllListeners();
+            if (m_titleInput != null) m_titleInput.onEndEdit.RemoveAllListeners();
+            if (m_descInput != null) m_descInput.onEndEdit.RemoveAllListeners();
+            if (m_iconAddressDropdown != null) m_iconAddressDropdown.onValueChanged.RemoveAllListeners();
+            if (m_startDateInput != null) m_startDateInput.onEndEdit.RemoveAllListeners();
+            if (m_endDateInput != null) m_endDateInput.onEndEdit.RemoveAllListeners();
         }
 
-        /// <summary>
-        /// [기능]: 인풋 필드 폼 수정 완료 시 바인딩.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
-        private void func_OnFormInputEndEdit(string val)
+        private void func_RegisterQuestFormListeners()
         {
-            func_SubmitFormChanges();
+            if (m_questIdInput != null) m_questIdInput.onEndEdit.AddListener(func_OnQuestFormInputEndEdit);
+            if (m_questTitleInput != null) m_questTitleInput.onEndEdit.AddListener(func_OnQuestFormInputEndEdit);
+            if (m_questDescInput != null) m_questDescInput.onEndEdit.AddListener(func_OnQuestFormInputEndEdit);
+            if (m_condTypeDropdown != null) m_condTypeDropdown.onValueChanged.AddListener(func_OnQuestDropdownValueChanged);
+            if (m_condTargetInput != null) m_condTargetInput.onEndEdit.AddListener(func_OnQuestFormInputEndEdit);
         }
 
-        /// <summary>
-        /// [기능]: 드롭다운 설정 변경 시 바인딩.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
-        private void func_OnDropdownValueChanged(int index)
+        private void func_UnregisterQuestFormListeners()
         {
-            func_SubmitFormChanges();
+            if (m_questIdInput != null) m_questIdInput.onEndEdit.RemoveAllListeners();
+            if (m_questTitleInput != null) m_questTitleInput.onEndEdit.RemoveAllListeners();
+            if (m_questDescInput != null) m_questDescInput.onEndEdit.RemoveAllListeners();
+            if (m_condTypeDropdown != null) m_condTypeDropdown.onValueChanged.RemoveAllListeners();
+            if (m_condTargetInput != null) m_condTargetInput.onEndEdit.RemoveAllListeners();
         }
 
-        /// <summary>
-        /// [기능]: UI 상의 모든 편집 텍스트와 드롭다운 값을 수집하여 뷰모델 갱신 명령을 인가합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
-        private void func_SubmitFormChanges()
+        private void func_OnEventFormInputEndEdit(string val)
         {
-            if (m_viewModel == null)
-            {
-                return;
-            }
+            func_SubmitEventFormChanges();
+        }
+
+        private void func_OnQuestFormInputEndEdit(string val)
+        {
+            func_SubmitQuestFormChanges();
+        }
+
+        private void func_OnQuestDropdownValueChanged(int index)
+        {
+            func_SubmitQuestFormChanges();
+        }
+
+        private void func_SubmitEventFormChanges()
+        {
+            if (m_viewModel == null) return;
             var selected = m_viewModel.GetSelectedEvent();
-            if (selected == null)
-            {
-                return;
-            }
+            if (selected == null) return;
 
             var updated = new EventDefinitionDTO
             {
@@ -734,25 +760,38 @@ namespace BePex.EventSystem.Views
                     : selected.eventIconAddress,
                 startDate = m_startDateInput != null ? m_startDateInput.text : selected.startDate,
                 endDate = m_endDateInput != null ? m_endDateInput.text : selected.endDate,
-                condition = new ConditionDefinitionDTO
-                {
-                    conditionType = m_condTypeDropdown != null 
-                        ? EnumDisplayHelper.GetEnumValue<ConditionDefinitionSO.ConditionType>(m_condTypeDropdown.options[m_condTypeDropdown.value].text).ToString() 
-                        : selected.condition.conditionType,
-                    targetValue = m_condTargetInput != null ? (int.TryParse(m_condTargetInput.text, out int target) ? target : 0) : selected.condition.targetValue
-                },
-                rewards = selected.rewards
+                quests = selected.quests
             };
 
             m_viewModel.UpdateSelectedEvent(updated);
         }
+
+        private void func_SubmitQuestFormChanges()
+        {
+            if (m_viewModel == null) return;
+            var selectedQuest = m_viewModel.GetSelectedQuest();
+            if (selectedQuest == null) return;
+
+            var updated = new QuestDefinitionDTO
+            {
+                questId = m_questIdInput != null ? m_questIdInput.text : selectedQuest.questId,
+                questTitle = m_questTitleInput != null ? m_questTitleInput.text : selectedQuest.questTitle,
+                questDescription = m_questDescInput != null ? m_questDescInput.text : selectedQuest.questDescription,
+                condition = new ConditionDefinitionDTO
+                {
+                    conditionType = m_condTypeDropdown != null 
+                        ? EnumDisplayHelper.GetEnumValue<ConditionDefinitionSO.ConditionType>(m_condTypeDropdown.options[m_condTypeDropdown.value].text).ToString() 
+                        : selectedQuest.condition.conditionType,
+                    targetValue = m_condTargetInput != null ? (int.TryParse(m_condTargetInput.text, out int target) ? target : 0) : selectedQuest.condition.targetValue
+                },
+                rewards = selectedQuest.rewards
+            };
+
+            m_viewModel.UpdateSelectedQuest(updated);
+        }
         #endregion
 
         #region 헬퍼 메서드 및 썸네일 제어
-        /// <summary>
-        /// [기능]: 드롭다운 옵션 목록 데이터를 구성하여 반환합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
         private List<TMP_Dropdown.OptionData> GetIconDropdownOptions()
         {
             var options = new List<TMP_Dropdown.OptionData>();
@@ -763,16 +802,9 @@ namespace BePex.EventSystem.Views
             return options;
         }
 
-        /// <summary>
-        /// [기능]: 어드레서블 주소 문자열로부터 item_Sheet 인덱스를 안전하게 추출합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
         private int ParseIconIndex(string address)
         {
-            if (string.IsNullOrEmpty(address))
-            {
-                return 0;
-            }
+            if (string.IsNullOrEmpty(address)) return 0;
             try
             {
                 int openBracket = address.IndexOf('[');
@@ -781,31 +813,18 @@ namespace BePex.EventSystem.Views
                 {
                     string subAsset = address.Substring(openBracket + 1, closeBracket - openBracket - 1);
                     string indexStr = subAsset.Replace("item_Sheet_", "");
-                    if (int.TryParse(indexStr, out int idx))
-                    {
-                        return idx;
-                    }
+                    if (int.TryParse(indexStr, out int idx)) return idx;
                 }
                 else
                 {
                     string indexStr = address.Replace("item_Sheet_", "");
-                    if (int.TryParse(indexStr, out int idx))
-                    {
-                        return idx;
-                    }
+                    if (int.TryParse(indexStr, out int idx)) return idx;
                 }
             }
-            catch
-            {
-                // 예외 발생 시 기본값 0
-            }
+            catch { /* Ignore */ }
             return 0;
         }
 
-        /// <summary>
-        /// [기능]: 지정한 인덱스의 스프라이트를 로딩하여 썸네일에 실시간 갱신합니다.
-        /// [작성자]: 윤승종
-        /// </summary>
         private async Awaitable UpdateThumbnailAsync(int index, Image targetImage)
         {
             if (targetImage != null)
@@ -818,38 +837,22 @@ namespace BePex.EventSystem.Views
             }
         }
 
-        /// <summary>
-        /// [기능]: 상세 편집창의 아이콘 드롭다운 값 변경 시 썸네일 업데이트를 수행하는 비동기 래퍼.
-        /// [작성자]: 윤승종
-        /// </summary>
         private async void func_OnIconAddressDropdownChangedWrapper(int index)
         {
             await UpdateThumbnailAsync(index, m_iconAddressPreview);
-            func_SubmitFormChanges();
+            func_SubmitEventFormChanges();
         }
 
-        /// <summary>
-        /// [기능]: 신규 보상 추가창의 아이콘 드롭다운 값 변경 시 썸네일 업데이트를 수행하는 비동기 래퍼.
-        /// [작성자]: 윤승종
-        /// </summary>
         private async void func_OnNewRewardIconDropdownChangedWrapper(int index)
         {
             await UpdateThumbnailAsync(index, m_newRewardIconPreview);
         }
 
-        /// <summary>
-        /// [기능]: 동기 맥락에서 호출하기 위한 신규 보상 아이콘 썸네일 비동기 실행기.
-        /// [작성자]: 윤승종
-        /// </summary>
         private async void func_UpdateNewRewardThumbnailWrapper(int index)
         {
             await UpdateThumbnailAsync(index, m_newRewardIconPreview);
         }
 
-        /// <summary>
-        /// [기능]: 동기 맥락에서 호출하기 위한 상세 편집 아이콘 썸네일 비동기 실행기.
-        /// [작성자]: 윤승종
-        /// </summary>
         private async void func_UpdateIconAddressThumbnailWrapper(int index)
         {
             await UpdateThumbnailAsync(index, m_iconAddressPreview);

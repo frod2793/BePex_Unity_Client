@@ -14,6 +14,20 @@ namespace BePex.EventSystem.DTOs
     }
 
     /// <summary>
+    /// [기능]: 개별 퀘스트의 기획 데이터를 담는 데이터 전송 객체(DTO).
+    /// [작성자]: 윤승종
+    /// </summary>
+    [Serializable]
+    public class QuestDefinitionDTO
+    {
+        public string questId;
+        public string questTitle;
+        public string questDescription;
+        public ConditionDefinitionDTO condition;
+        public List<RewardDefinitionDTO> rewards = new List<RewardDefinitionDTO>();
+    }
+
+    /// <summary>
     /// [기능]: 개별 이벤트 기획 메타데이터 정보를 직렬화하기 위한 데이터 전송 객체(DTO).
     /// [작성자]: 윤승종
     /// </summary>
@@ -26,8 +40,7 @@ namespace BePex.EventSystem.DTOs
         public string eventIconAddress;
         public string startDate;
         public string endDate;
-        public ConditionDefinitionDTO condition;
-        public List<RewardDefinitionDTO> rewards = new List<RewardDefinitionDTO>();
+        public List<QuestDefinitionDTO> quests = new List<QuestDefinitionDTO>();
     }
 
     /// <summary>

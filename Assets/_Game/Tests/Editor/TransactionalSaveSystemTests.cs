@@ -61,38 +61,40 @@ namespace BePex.EventSystem.Tests.Editor
         {
             public bool shouldFailOnSaveBatch = false;
 
-            public Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
+            public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
             {
-                return Awaitable.FromResult(new EventProgressModel { eventId = eventId });
+                await Awaitable.MainThreadAsync();
+                return new EventProgressModel { eventId = eventId };
             }
             
-            public Awaitable SaveProgressAsync(string eventId, EventProgressModel progress, CancellationToken cancellationToken = default)
+            public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress, CancellationToken cancellationToken = default)
             {
-                return Awaitable.FromCompleted();
+                await Awaitable.MainThreadAsync();
             }
             
-            public Awaitable<PlayerRewardModel> LoadRewardStateAsync(CancellationToken cancellationToken = default)
+            public async Awaitable<PlayerRewardModel> LoadRewardStateAsync(CancellationToken cancellationToken = default)
             {
-                return Awaitable.FromResult(new PlayerRewardModel());
+                await Awaitable.MainThreadAsync();
+                return new PlayerRewardModel();
             }
             
-            public Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
+            public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
             {
-                return Awaitable.FromCompleted();
+                await Awaitable.MainThreadAsync();
             }
             
-            public Awaitable ClearAllAsync(CancellationToken cancellationToken = default)
+            public async Awaitable ClearAllAsync(CancellationToken cancellationToken = default)
             {
-                return Awaitable.FromCompleted();
+                await Awaitable.MainThreadAsync();
             }
 
-            public Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
+            public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
             {
+                await Awaitable.MainThreadAsync();
                 if (shouldFailOnSaveBatch)
                 {
                     throw new IOException("Simulated disk error during SaveBatchAsync");
                 }
-                return Awaitable.FromCompleted();
             }
         }
 

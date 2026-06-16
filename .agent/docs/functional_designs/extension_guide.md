@@ -8,6 +8,43 @@
 
 ## 1. 확장성 설계 개요
 
+### 1.1. 확장성 및 폴백 구조 (Class Diagram)
+
+새로운 조건이나 보상이 추가되어도 기존 팩토리 클래스(`QuestConditionFactory`, `QuestRewardFactory`)의 소스 코드는 전혀 수정할 필요가 없도록 리플렉션과 폴백 아키텍처를 연동시켰습니다.
+
+```mermaid
+classDiagram
+    class QuestConditionFactory {
+        -Dictionary~string, Type~ m_conditionTypeMap
+        +CreateCondition(QuestDefinitionDTO) IQuestCondition
+        -ScanAssemblyForConditions()
+    }
+
+    class IQuestCondition {
+        <<interface>>
+    }
+
+    class BaseQuestCondition {
+        <<abstract>>
+    }
+
+    class StandardQuestCondition {
+        <<Fallback>>
+    }
+
+    class CustomQuestCondition {
+        <<Custom Strategy>>
+    }
+
+    QuestConditionFactory ..> IQuestCondition : Creates
+    IQuestCondition <|.. BaseQuestCondition
+    BaseQuestCondition <|-- StandardQuestCondition
+    BaseQuestCondition <|-- CustomQuestCondition
+
+    Note for StandardQuestCondition "기획 데이터의 typeName에 해당하는\nC# 구현 클래스가 없을 경우\n이 범용 폴백 클래스로 자동 대체됨"
+```
+
+### 1.2. 핵심 설계 개념
 본 이벤트 시스템은 새로운 기능 요구사항이 발생했을 때 기존 코드를 수정하지 않고 유연하게 기능을 추가할 수 있는 **개방-폐쇄 원칙(OCP, Open-Closed Principle)**을 엄격하게 준수합니다.
 
 이전의 취약한 소스 코드 문자열 치환(Enum) 방식에서 벗어나, 이제 **Type Object 패턴**을 적용하여 유니티 에셋 데이터와 문자열 키 기반으로 동작합니다.

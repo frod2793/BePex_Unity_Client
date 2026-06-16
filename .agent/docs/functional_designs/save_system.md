@@ -10,6 +10,66 @@
 
 ## 2. 주요 클래스 및 책임
 
+### 2.1. 세이브 시스템 클래스 구조 (Class Diagram)
+
+데코레이터 패턴을 적용하여 캐싱, 예외 재시도, 원격 DB 연동, 트랜잭션 안전성 관심사를 물리 파일 입출력 로직과 완벽히 격리하였습니다.
+
+```mermaid
+classDiagram
+    class ISaveSystem {
+        <<interface>>
+        +LoadProgressAsync(string, CancellationToken) Awaitable~EventProgressModel~
+        +SaveProgressAsync(string, EventProgressModel, CancellationToken) Awaitable
+        +LoadRewardStateAsync(CancellationToken) Awaitable~PlayerRewardModel~
+        +SaveRewardStateAsync(PlayerRewardModel, CancellationToken) Awaitable
+        +ClearAllSaveDataAsync(CancellationToken) Awaitable
+    }
+
+    class JsonSaveSystem {
+        -string m_saveDir
+        +LoadProgressAsync(string, CancellationToken) Awaitable~EventProgressModel~
+        +SaveProgressAsync(string, EventProgressModel, CancellationToken) Awaitable
+    }
+
+    class InMemorySaveSystem {
+        -Dictionary~string, string~ m_virtualDisk
+        +LoadProgressAsync(string, CancellationToken) Awaitable~EventProgressModel~
+        +SaveProgressAsync(string, EventProgressModel, CancellationToken) Awaitable
+    }
+
+    class CachedSaveSystem {
+        -ISaveSystem m_innerSaveSystem
+        -Dictionary~string, EventProgressModel~ m_cachedProgress
+        -PlayerRewardModel m_cachedReward
+        -HashSet~string~ m_dirtyIds
+        +LoadProgressAsync(string, CancellationToken) Awaitable~EventProgressModel~
+        +SaveProgressAsync(string, EventProgressModel, CancellationToken) Awaitable
+    }
+
+    class RetrySaveSystemDecorator {
+        -ISaveSystem m_innerSaveSystem
+        -int m_maxRetryCount
+        -float m_baseDelaySeconds
+        +SaveProgressAsync(string, EventProgressModel, CancellationToken) Awaitable
+    }
+
+    class TransactionalSaveSystemDecorator {
+        -ISaveSystem m_innerSaveSystem
+        +SaveProgressAsync(string, EventProgressModel, CancellationToken) Awaitable
+    }
+
+    ISaveSystem <|.. JsonSaveSystem
+    ISaveSystem <|.. InMemorySaveSystem
+    ISaveSystem <|.. CachedSaveSystem
+    ISaveSystem <|.. RetrySaveSystemDecorator
+    ISaveSystem <|.. TransactionalSaveSystemDecorator
+
+    CachedSaveSystem o--> ISaveSystem : Wraps
+    RetrySaveSystemDecorator o--> ISaveSystem : Wraps
+    TransactionalSaveSystemDecorator o--> ISaveSystem : Wraps
+```
+
+### 2.2. 클래스 역할 요약
 *   **`ISaveSystem` (Interface)**
     *   이벤트 진행 상태 및 재화 데이터의 세이브/로드/초기화를 수행하기 위한 입출력 추상화 규격입니다.
 *   **`JsonSaveSystem` (Infrastructure)**

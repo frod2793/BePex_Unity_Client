@@ -16,6 +16,46 @@
     *   **역할**: 실제 플레이어가 퀘스트를 완료하고 보상을 획득하는 본연의 콘텐츠가 구동되는 씬입니다.
     *   **사용 이유**: 플레이어의 실시간 콘텐츠 진행 사항(출석 체크, 적 처치 수, 스테이지 클리어)을 탐지하여 `IQuestCondition` 검증을 거치고, 최종 달성 시 보상을 `PlayerRewardModel` 딕셔너리에 실시간으로 가산 적립합니다. 모든 자산 변화와 퀘스트 진척도는 로컬 파일 I/O 시스템(`JsonSaveSystem`)을 통해 안정적으로 영속화됩니다.
 
+### 1.1. Pure DI & Composition Root (의존성 조립 구조)
+
+싱글톤(Singleton) 패턴의 안티패턴 사용을 엄격히 배제하기 위해, 각 씬에 배치된 `EventSceneInitializer`(인게임 씬) 및 `EventAdminSceneInitializer`(어드민 씬) 클래스가 **컴포지션 루트(Composition Root)** 역할을 수행하여 순수 C# 의존성 관계를 런타임 시작 시 수동으로 조립(Pure DI)합니다.
+
+```mermaid
+classDiagram
+    class EventSceneInitializer {
+        -EventListView m_eventListView
+        -EventDetailView m_eventDetailView
+        -RewardPopupView m_rewardPopupView
+        -CurrencyHUDView m_currencyHUDView
+        +InitializeAsync() Awaitable
+    }
+
+    class ISaveSystem {
+        <<interface>>
+    }
+    class ITimeProvider {
+        <<interface>>
+    }
+    class EventModel {
+        +EventModel(EventTableDTO, QuestConditionFactory, QuestRewardFactory, ITimeProvider)
+    }
+
+    class EventListViewModel {
+        +EventListViewModel(EventModel, ISaveSystem)
+    }
+    class EventDetailViewModel {
+        +EventDetailViewModel(EventModel, ISaveSystem, PlayerRewardModel)
+    }
+
+    EventSceneInitializer --> ISaveSystem : Instantiates Decorators
+    EventSceneInitializer --> ITimeProvider : Instantiates (System/Debug)
+    EventSceneInitializer --> EventModel : Instantiates (Pure C# POCO)
+    EventSceneInitializer --> EventListViewModel : Instantiates & Injects
+    EventSceneInitializer --> EventDetailViewModel : Instantiates & Injects
+    EventSceneInitializer --> EventListView : Binds ViewModel
+    EventSceneInitializer --> EventDetailView : Binds ViewModel
+```
+
 ---
 
 ## 2. 설계하면서 고려한 점 (Design Considerations & Key Decisions)

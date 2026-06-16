@@ -3,23 +3,107 @@
 > **작성자**: 윤승종  
 > **작성일**: 2026-06-16  
 
-## 1. 개요
-단일 조건 달성 시 보상을 즉시 수령하는 구조를 넘어서, 게임 내 특정 행동 시 이벤트 포인트(Point), 시즌 포인트(SeasonPoint), 크레딧(Credit) 등의 재화를 지급하고 이 포인트를 모아 상점이나 보상 팝업에서 원하는 가치의 상품과 교환하는 경제 구조 시스템입니다.
+---
 
-## 2. 주요 클래스 및 책임
-*   **`PlayerRewardModel` (Model)**
-    *   유저가 현재 보유하고 있는 여러 형태의 화폐(Point, SeasonPoint, Credit 등) 잔액을 데이터로 관리하고 캡슐화 처리하는 순수 C# 클래스(POCO)입니다.
-    *   `AddCurrency()`와 `TrySpendCurrency()` API를 제공하여 데이터 가산 및 차감을 안전하게 처리합니다.
-*   **`PointQuestReward` (IQuestReward)**
-    *   보상 타입 중 하나로, 지급 시 인게임 아이템이 아니라 `PlayerRewardModel`의 보유 포인트를 일정 수치만큼 가산하는 구현체입니다.
+## 1. 개요
+조건 달성 시 정해진 인게임 아이템을 일방적으로 수령하는 직관적인 수령 모델을 넘어, 특정 보상(이벤트 포인트, 시즌 포인트, 크레딧 등)을 지급하여 사용자가 이 재화를 적립한 뒤, 원하는 가치의 상점 상품이나 다른 보상 세트로 직접 교환할 수 있도록 제공하는 게임 내 화폐 경제 시스템입니다.
+
+---
+
+## 2. 클래스 구조 및 책임 (Class Diagram)
+
+재화는 `PlayerRewardModel`에서 통합 관리되며, 보상 객체(`GeneralQuestReward`)에 의해 가산됩니다. 재화 변동 시 UI는 뷰모델(`CurrencyHUDViewModel`)을 통해 단방향으로 자동 갱신됩니다.
+
+```mermaid
+classDiagram
+    class IQuestReward {
+        <<interface>>
+        +RewardId string
+        +ClaimRewardAsync(PlayerRewardModel, ISaveSystem) Awaitable
+    }
+
+    class BaseQuestReward {
+        <<abstract>>
+        #m_rewardId string
+        #m_rewardType string
+        #m_amount int
+        +ClaimRewardAsync(PlayerRewardModel, ISaveSystem) Awaitable
+    }
+
+    class GeneralQuestReward {
+        +ClaimRewardAsync(PlayerRewardModel, ISaveSystem) Awaitable
+    }
+
+    class PlayerRewardModel {
+        -Dictionary~string, int~ m_balances
+        +AddCurrency(string, int)
+        +TrySpendCurrency(string, int) bool
+        +GetBalance(string) int
+    }
+
+    class CurrencyHUDViewModel {
+        -PlayerRewardModel m_rewardModel
+        +OnCurrencyChanged Action~string, int~
+        +NotifyCurrencyChanged(string, int)
+    }
+
+    class CurrencyHUDView {
+        -CurrencyHUDViewModel m_viewModel
+        +Bind(CurrencyHUDViewModel)
+    }
+
+    IQuestReward <|.. BaseQuestReward
+    BaseQuestReward <|-- GeneralQuestReward
+    GeneralQuestReward ..> PlayerRewardModel : Modifies
+    CurrencyHUDViewModel --> PlayerRewardModel : Refers
+    CurrencyHUDView --> CurrencyHUDViewModel : Observes
+```
+
+### 2.1. 주요 클래스 정의
+*   **`PlayerRewardModel`**
+    *   유저가 보유한 모든 재화(Point, SeasonPoint, Credit 등)의 잔액을 캡슐화 관리하는 순수 C# 도메인 모델(POCO)입니다.
+    *   데이터의 증가(`AddCurrency`) 및 차감(`TrySpendCurrency`)의 무결성 검증을 책임집니다.
+*   **`GeneralQuestReward`**
+    *   보상 수령 명령이 실행될 때 `PlayerRewardModel`에 접근하여, 지정된 재화 코드와 수량만큼 화폐를 더해주는 보상 전략 구현체입니다.
 *   **`CurrencyHUDViewModel`**
-    *   현재 보유하고 있는 다양한 화폐 잔액의 변화를 감지하고, 화면 상단 재화 HUD UI의 수치 갱신 이벤트(`NotifyCurrencyChanged`)를 View로 전파합니다.
+    *   보유 화폐 데이터가 변경되었음을 브로드캐스팅하는 이벤트 핸들러(`NotifyCurrencyChanged`)를 제공하며, 상단 재화 HUD UI 갱신을 주도합니다.
+
+---
 
 ## 3. 동작 흐름 (Data Flow)
-1.  **포인트 적립**: 스테이지 클리어 등 이벤트 조건 달성 시 보상(Reward)이 실행될 때, 해당 보상이 `PointQuestReward`인 경우 포인트가 적립됩니다.
-2.  **데이터 바인딩**: `PlayerRewardModel`의 화폐 수치 변경이 발생하여 데이터 저장 장치에 세이브되면, `CurrencyHUDViewModel`이 이를 감지하고 View 상단의 재화 UI 그룹 수치를 갱신합니다.
-3.  **포인트 소모 (교환)**: 사용자가 상점 교환이나 포인트 차감 행동을 요구하면 뷰모델을 통해 `TrySpendCurrency(화폐타입, 금액)`가 호출됩니다.
-4.  **결과 반영**: 잔액 부족 시 차감이 거부되며, 잔액이 충분할 시 포인트를 차감하고 실제 보상(아이템 등)을 지급하는 `QuestRewardFactory` 로직을 트리거합니다.
+
+보상을 수령하여 포인트 재화 잔액이 올라가고 상단 재화 표시가 변경되는 일련의 데이터 흐름입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player as 플레이어 UI 클릭
+    participant VM as EventDetailViewModel
+    participant Reward as GeneralQuestReward
+    participant Model as PlayerRewardModel
+    participant Save as ISaveSystem (Decorator)
+    participant HudVM as CurrencyHUDViewModel
+    participant HudView as CurrencyHUDView
+
+    Player->>VM: func_OnClaimRewardClick()
+    VM->>Reward: ClaimRewardAsync(Model, Save)
+    
+    Reward->>Model: AddCurrency("Point", 50)
+    Note over Model: balances["Point"] 수치 50 가산
+    
+    Reward->>Save: SaveRewardStateAsync(Model)
+    Save-->>Reward: 비동기 세이브 완료 회신
+    
+    VM->>HudVM: NotifyCurrencyChanged("Point", newBalance)
+    HudVM->>HudView: OnCurrencyChanged Action 브로드캐스트
+    HudView->>HudView: 상단 UI의 텍스트 수치 갱신 (예: 50 -> 100)
+```
+
+---
 
 ## 4. 확장성 및 OCP
-*   다양한 형태의 포인트(예: 길드 코인, 우정 포인트)를 추가할 시 `PlayerRewardModel` 내의 `RewardType` 이넘 필드 확장 및 딕셔너리 내부 잔액 매핑 구조를 통해, 핵심 로직 및 뷰모델 수정 없이 손쉽게 포인트를 통합 관리 및 추가할 수 있도록 설계되었습니다.
+
+*   **새로운 화폐 타입 추가 시 (예: 길드 코인, 다이아 등)**:
+    *   데이터 테이블(JSON)의 보상 정적 정의 파트에서 화폐 식별 문자열(예: `"GuildCoin"`)로 지정하기만 하면 됩니다.
+    *   `PlayerRewardModel`은 내부적으로 `string`-`int` 딕셔너리로 잔액을 관리하므로 C# 코드 추가나 스키마 수정 없이도 새로운 포인트 체계를 즉시 누적 및 차감하여 활용할 수 있습니다.
+    *   UI 상단 HUD에 추가된 화폐를 바인딩하고 싶을 경우, `CurrencyHUDView`에서 갱신을 원하는 화폐 식별자를 바인딩하고 `NotifyCurrencyChanged`에 체이닝해주는 것으로 코드 변화를 최소화할 수 있습니다.

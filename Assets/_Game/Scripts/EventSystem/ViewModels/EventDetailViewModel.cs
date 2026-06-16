@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using BePex.EventSystem.Models;
 using BePex.EventSystem.Data;
@@ -19,6 +20,7 @@ namespace BePex.EventSystem.ViewModels
         private readonly ISaveSystem m_saveSystem;
         private readonly PlayerRewardModel m_playerReward;
         private string m_currentEventId;
+        private readonly List<EventDefinitionDTO> m_cachedActiveEvents = new List<EventDefinitionDTO>();
         #endregion
 
         #region 이벤트 (Observer)
@@ -69,7 +71,8 @@ namespace BePex.EventSystem.ViewModels
         /// </summary>
         public EventDefinitionDTO GetEventDefinition()
         {
-            var list = m_eventModel.GetActiveEvents();
+            m_eventModel.GetActiveEventsNonAlloc(m_cachedActiveEvents);
+            var list = m_cachedActiveEvents;
             for (int i = 0; i < list.Count; i++)
             {
                 if (list[i].eventId == m_currentEventId)

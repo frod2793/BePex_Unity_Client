@@ -67,29 +67,50 @@
 ### 2.2 2단계: 신규 조건 전략(Strategy) 클래스 구현 (특수 가드 로직 필요 시에만 선택)
 단순 비교 조건이 아닌, 특정한 로직적 검증(예: 하루 1회 제한 가드가 들어간 `AttendanceQuestCondition` 등)이 필요할 때만 클래스를 구현하고 `[QuestCondition("식별키")]` 어트리뷰트로 장식합니다.
 
-#### 예시 A: 길드 퀘스트 조건 (`GuildQuestCondition.cs`)
+#### 예시 A: 몬스터 처치 조건 (`KillCountQuestCondition.cs`)
 ```csharp
-using BePex.EventSystem.Interfaces;
-using BePex.EventSystem.Conditions;
-using BePex.EventSystem.Data;
 using UnityEngine;
+using BePex.EventSystem.Interfaces;
+using BePex.EventSystem.Data;
 
 namespace BePex.EventSystem.Conditions
 {
     /// <summary>
-    /// [기능]: 길드 기부 또는 길드 레이드 참여 횟수를 누적해 판정하는 조건 전략 클래스.
+    /// [기능]: 킬카운트를 이벤트 완료 조건으로 달성하였는지 판정하며, 몬스터 처치 판정 및 필터링 비즈니스 로직을 제공하는 예시 전략 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestCondition("GuildEvent")]
-    public class GuildQuestCondition : BaseQuestCondition
+    [QuestCondition("KillCount")]
+    public class KillCountQuestCondition : BaseQuestCondition
     {
-        public GuildQuestCondition(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId, string questId)
+        private readonly string m_targetMonsterType;
+
+        // 팩토리 바인딩용 5인자 기본 생성자
+        public KillCountQuestCondition(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId, string questId)
             : base(targetValue, saveSystem, timeProvider, eventId, questId)
         {
+            m_targetMonsterType = "All";
         }
 
-        // BaseQuestCondition이 제공하는 기본 메서드(GetCurrentProgressAsync, IsCompletedAsync)가
-        // 로컬 진행도 판정을 완벽하게 지원하므로, 일반적인 누적/판정 로직은 추가 구현이 필요 없습니다!
+        // 특정 몬스터를 타겟팅 필터링하기 위한 6인자 오버로딩 생성자
+        public KillCountQuestCondition(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId, string questId, string targetMonsterType)
+            : base(targetValue, saveSystem, timeProvider, eventId, questId)
+        {
+            m_targetMonsterType = string.IsNullOrEmpty(targetMonsterType) ? "All" : targetMonsterType;
+        }
+
+        // 처치된 몬스터 타입이 해당 조건의 대상인지 판정하는 비즈니스 메서드 예시
+        public bool EvaluateMonsterKill(string killedMonsterType)
+        {
+            if (string.IsNullOrEmpty(killedMonsterType))
+            {
+                return false;
+            }
+            if (m_targetMonsterType.Equals("All", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return m_targetMonsterType.Equals(killedMonsterType, System.StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
 ```
@@ -115,36 +136,30 @@ namespace BePex.EventSystem.Conditions
 ### 3.2 2단계: 신규 보상 전략(Strategy) 클래스 구현 (특수 기능 구현 시 선택)
 보상이 단순히 `PlayerRewardModel` 딕셔너리에 추가되는 것을 넘어, 특수한 외부 연동이나 비동기 통신이 동반되는 보상일 때만 구현합니다.
 
-#### 예시 B: 시즌 포인트 보상 (`SeasonPointQuestReward.cs` 구현 예시)
+#### 예시 B: 외부 연동 시뮬레이션 보상 (`SampleQuestReward.cs` 구현 예시)
 ```csharp
-using BePex.EventSystem.Interfaces;
-using BePex.EventSystem.Rewards;
-using BePex.EventSystem.Data;
-using BePex.EventSystem.Models;
 using UnityEngine;
+using BePex.EventSystem.Interfaces;
+using BePex.EventSystem.Models;
 
 namespace BePex.EventSystem.Rewards
 {
     /// <summary>
-    /// [기능]: 시즌패스 진행에 기여하는 전용 시즌 포인트를 지급하는 보상 전략 클래스.
+    /// [기능]: 플레이어 자산의 즉시 가산이 아닌 외부 시스템 연동을 시뮬레이션하기 위한 예시용 보상 전략 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestReward("SeasonPoint")]
-    public class SeasonPointQuestReward : BaseQuestReward
+    [QuestReward("Sample")]
+    public class SampleQuestReward : BaseQuestReward
     {
-        public SeasonPointQuestReward(int amount, string displayName)
+        public SampleQuestReward(int amount, string displayName)
             : base(amount, displayName)
         {
         }
 
         public override void Grant(PlayerRewardModel playerReward)
         {
-            if (playerReward != null)
-            {
-                // 플레이어 데이터 내 시즌패스 경험치/포인트 가산 (문자열 식별 키 활용)
-                playerReward.AddCurrency("SeasonPoint", m_amount);
-                Debug.Log($"[SeasonPointQuestReward] '{m_displayName}'이(가) 정상 지급되었습니다. (시즌 포인트: +{m_amount}P)");
-            }
+            // 실제 PlayerRewardModel의 데이터를 직접 더하지 않고 원격 연동 프로세스를 시뮬레이션
+            Debug.Log($"[SampleQuestReward] [외부 연동 성공] 보상명: {m_displayName}, 수량: {m_amount} 지급 완료.");
         }
     }
 }
@@ -164,7 +179,8 @@ namespace BePex.EventSystem.Rewards
    새롭게 작성하는 조건 및 보상 클래스는 `BaseQuestCondition` 및 `BaseQuestReward` 추상 클래스를 상속받는 순수 C# 도메인 클래스여야 합니다. `MonoBehaviour`를 절대 상속받지 마십시오.
 2. **어트리뷰트 데코레이터 선언**:
    클래스 정의 바로 위에 반드시 `[QuestCondition("<영문 식별키>")]` 또는 `[QuestReward("<영문 식별키>")]`를 문자열 상수로 정확하게 장식해야 팩토리 레지스트리 자동화 기작이 누락되지 않고 등록됩니다. (C# 클래스를 직접 생성해 확장할 시 필수 사항)
-3. **생성자 구조 준수**:
-   리플렉션 팩토리의 `Activator.CreateInstance` 바인딩 규격 상, 클래스의 생성자 파라미터 시그니처가 다음과 같이 통일되어 있어야 정상 작동합니다:
+3. **생성자 구조 준수 (팩토리 규격)**:
+   리플렉션 팩토리의 `Activator.CreateInstance` 바인딩 규격 상, 클래스의 생성자 파라미터 시그니처가 반드시 아래의 표준 폼을 충족해야 합니다.
    - **Condition**: `(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId, string questId)`
    - **Reward**: `(int amount, string displayName)`
+   - *💡 팁*: 추가 매개변수가 필요한 오버로딩 생성자를 정의하더라도, 팩토리 탐색용으로 위 표준 5인자/2인자 생성자가 반드시 기본 제공되어 있어야 런타임 오류가 발생하지 않습니다.

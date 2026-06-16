@@ -18,6 +18,7 @@ namespace BePex.EventSystem.ViewModels
         private readonly EventModel m_eventModel;
         private readonly ISaveSystem m_saveSystem;
         private string m_selectedEventId;
+        private readonly List<EventDefinitionDTO> m_cachedActiveEvents = new List<EventDefinitionDTO>();
         #endregion
 
         #region 이벤트 (Observer)
@@ -45,15 +46,16 @@ namespace BePex.EventSystem.ViewModels
 
         #region 공개 메서드
         /// <summary>
-        /// [기능]: 현재 활성 상태의 모든 이벤트 리스트를 도메인 모델로부터 가공 수집해 반환합니다.
+        /// [기능]: 현재 활성 상태의 모든 이벤트 리스트를 가비지 생성 없이 내부 버퍼를 경유해 읽기 전용으로 반환합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 반환 형식을 EventDefinitionDTO로 변경
+        /// [수정 내용]: NonAlloc 구조 및 IReadOnlyList 반환 타입 적용
         /// </summary>
-        public List<EventDefinitionDTO> GetEvents()
+        public IReadOnlyList<EventDefinitionDTO> GetEvents()
         {
-            return m_eventModel.GetActiveEvents();
+            m_eventModel.GetActiveEventsNonAlloc(m_cachedActiveEvents);
+            return m_cachedActiveEvents;
         }
 
         /// <summary>

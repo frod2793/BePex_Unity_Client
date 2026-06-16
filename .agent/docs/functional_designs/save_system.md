@@ -199,6 +199,50 @@ sequenceDiagram
     Disk->>Disk: JSON 직렬화 및 디스크 덮어쓰기 완료
     Disk-->>Cache: 쓰기 작업 완료
     Cache-->>VM: 세이브 성공 상태 반환
+
+### 7.2 지수 백오프 비동기 재시도 흐름 (Retry Save Data Flow)
+물리 파일 I/O 오류 또는 원격 서버 불안정성으로 인해 데이터 저장이 실패할 경우, `RetrySaveSystemDecorator`가 중간에서 예외를 캐치하여 지수 백오프(Exponential Backoff) 지연 간격으로 자동 재시도를 처리하는 흐름입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as 뷰모델 / 클라이언트
+    participant Retry as RetrySaveSystemDecorator
+    participant Inner as innerSaveSystem (Cached / Json)
+
+    Client->>Retry: SaveProgressAsync(eventId, progress, Token)
+    Note over Retry: CancellationToken<br/>취소 가능 상태 검사
+    
+    Retry->>Inner: SaveProgressAsync() 물리 저장 요청 (1차)
+    alt 1차 시도 실패 (Exception 발생)
+        Inner-->>Retry: File I/O 에러 / 네트워크 에러 반환
+        Note over Retry: 1차 실패 감지<br/>대기 지연 = baseDelay * 2^0 (1초)
+        Retry->>Retry: Awaitable.WaitForSecondsAsync(1s)
+        
+        Retry->>Inner: SaveProgressAsync() 물리 저장 요청 (2차)
+        alt 2차 시도 성공
+            Inner-->>Retry: 저장 성공 회신
+            Retry-->>Client: 저장 완료 전달
+        else 2차 시도 실패 (Exception 발생)
+            Inner-->>Retry: 에러 반환
+            Note over Retry: 2차 실패 감지<br/>대기 지연 = baseDelay * 2^1 (2초)
+            Retry->>Retry: Awaitable.WaitForSecondsAsync(2s)
+            
+            Retry->>Inner: SaveProgressAsync() 물리 저장 요청 (3차)
+            alt 3차 시도 성공
+                Inner-->>Retry: 저장 성공 회신
+                Retry-->>Client: 저장 완료 전달
+            else 최종 실패 (3차 시도 한도 초과)
+                Inner-->>Retry: 에러 반환
+                Note over Retry: Debug.LogError 기록 및 예외 전파
+                Retry-->>Client: 최종 Exception Throw (저장 실패)
+            end
+        end
+    else 1차 시도 즉시 성공
+        Inner-->>Retry: 저장 성공 회신
+        Retry-->>Client: 저장 완료 전달
+    end
+```
 ```
 
 ---
@@ -209,7 +253,7 @@ sequenceDiagram
     *   캐싱(Caching) 및 성능 최적화 관심사는 `CachedSaveSystem`에, 단순 디스크 입출력(File System) 관심사는 `JsonSaveSystem`에 각각 완벽히 분리되어 있어 객체당 단일 책임(SRP)을 엄수합니다.
     *   기존 디스크 입출력 코드에 단 한 줄의 수정도 가하지 않고 최적화 기능을 유연하게 켜고 끌 수 있는 OCP(Open-Closed Principle) 구조를 보장합니다.
 *   **다형성을 통한 백엔드 다원화**:
-    *   컴포지션 루트(`EventSceneInitializer`)에서 DI 주입 시 `ISaveSystem` 인터페이스에 대해 `CachedSaveSystem(new RetrySaveSystemDecorator(new JsonSaveSystem()))`을 주입하는 형태로 조립됩니다.
+    *   컴포지션 루트(`EventSceneInitializer`)에서 DI 주입 시 `ISaveSystem` 인터페이스에 대해 `new RetrySaveSystemDecorator(new CachedSaveSystem(new JsonSaveSystem()))`을 주입하는 형태로 조립되어 에러 회복력과 캐싱을 동시에 얻습니다.
     *   추후 서버 SDK 연동이 필요할 시 `CloudSaveSystem` 또는 새로운 `ISaveSystem` 구현체 어댑터를 생성하여 주입 관계만 교체하면 클라이언트 전반의 세이브 아키텍처는 고스란히 재사용됩니다.
 
 ---

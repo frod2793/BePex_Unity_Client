@@ -35,6 +35,12 @@
 *   **고려 사항**: 기존의 `IEnumerator` 기반 코루틴은 매 프레임 프레임 지연 대기 시(`new WaitForEndOfFrame()`) 가비지(GC) 메모리 할당을 대량으로 유발하고, 씬이 전환되거나 UI가 도중에 파괴될 때 비동기 오작동 예외를 처리하기 어려웠습니다.
 *   **설계 결정**: Unity 6 표준인 `Awaitable` 기법을 전면 적용하고 `CancellationToken`을 적극 도입했습니다. UI 생명주기(`OnDestroy`)와 완벽히 연동시켜 중복 호출이나 씬 전환 시 비동기 연출을 즉각 취소(Cancel)하도록 제어하여 안정성을 극대화하고 가비지 없는 쾌적한 런타임을 제공합니다.
 
+### 2.4. Zero-Allocation 기반의 고성능 EventSystem 및 캐싱 기작
+*   **고려 사항**: 매 프레임 혹은 UI 갱신 시마다 `EventModel`에서 활성 이벤트 목록을 매번 `List<EventProgressModel>`의 형태로 인스턴스를 동적 할당하여 반환할 경우, 모바일 기기와 같이 리소스가 제한된 환경에서 가비지 컬렉션(GC) 스파이크로 인한 프레임 드랍을 유발할 우려가 있었습니다.
+*   **설계 결정**:
+    *   **Non-Alloc 버퍼 수집 기작**: `EventModel`에 `GetActiveEventsNonAlloc(List<EventProgressModel> results)` 메서드를 구현하여 런타임에 리스트를 새로 생성하지 않고, 외부에서 주입받은 버퍼 리스트에 활성화된 이벤트를 캐싱/복사하여 채워 넣는 구조로 변경했습니다.
+    *   **IReadOnlyList 노출 및 뷰모델 캐싱**: 뷰모델(`EventListViewModel`) 내부 필드로 `List<EventDetailViewModel>` 캐시 목록을 유지하며, 데이터 변경 시에만 이를 업데이트하고 외부 뷰에는 변경 불가능한 `IReadOnlyList<EventDetailViewModel>` 인터페이스 형태로 노출시켜 불필요한 복사 및 힙 메모리 할당을 완전히 차단했습니다.
+
 ---
 
 ## 3. 현재 구조의 한계와 개선 방향 (Limitations & Future Improvements)
@@ -77,7 +83,7 @@ classDiagram
     
     %% ViewModel Layer
     class EventListViewModel {
-        +EventList: List"EventDetailViewModel"
+        +EventList: IReadOnlyList"EventDetailViewModel"
         +LoadEvents()
     }
     class EventDetailViewModel {

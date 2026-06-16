@@ -178,6 +178,9 @@ public class SpecialPackageQuestReward : BaseQuestReward
 ## 4. 📐 설계 설명
 
 ### 설계 시 고려 사항
+- **Zero-Allocation 성능 최적화 전면 적용**:
+  - `EventModel`에서 매 프레임 혹은 갱신 시마다 리스트를 신규 할당하던 `GetActiveEvents()`를 완전히 삭제(폐기)하고, 매개변수로 버퍼를 주입받아 데이터 복사를 처리하는 `GetActiveEventsNonAlloc(List<EventDefinitionDTO>)`를 도입했습니다.
+  - `EventListViewModel`을 비롯한 모든 ViewModel 레이어(`EventDebugViewModel`, `RewardPopupViewModel`, `EventDetailViewModel`)에서 내부 캐시 버퍼 필드(`m_cachedActiveEvents`)를 유지하고 `IReadOnlyList<EventDefinitionDTO>` 인터페이스 형식으로 반환을 정립하여 UI 순회 시 발생하던 가비지 컬렉션(GC) 할당을 원천 차단했습니다.
 - **비동기 안전성 및 취소 제어 (CancellationToken & Awaitable)**:
   - 씬 전환 또는 UI 소멸 시 발생할 수 있는 메모리 누수 및 NullReferenceException을 차단하기 위해 `CancellationToken`을 저장소 및 이벤트 모델 전체에 적용했습니다.
   - UI 뷰 컴포넌트의 비동기 연출부는 `Awaitable` 반환 구조로 변경하였고, 유니티 에디터 이벤트 콜백 최상위 진입점인 `async void` 내부를 `try-catch` 가드로 래핑하고 `OperationCanceledException`을 콘솔 창에서 억제하도록 예외 필터를 가설하여 안정성을 높였습니다.
@@ -218,7 +221,7 @@ public class SpecialPackageQuestReward : BaseQuestReward
 
 ## 6. 🤖 AI 사용 내역 (AI Usage)
 
-- **사용한 AI 도구**: Antigravity Agent (Gemini 3.5 Flash / Claude 3.5 Sonnet 계열)
+- **사용한 AI 도구**: Antigravity Agent (Opus 4.8 / Gemini / Claude 계열)
 - **사용 범위**:
   - Newtonsoft.Json 도입에 따른 `PlayerRewardModel` 딕셔너리 직접 직렬화 전환 및 `[OnDeserialized]` 하위 호환 복구 마이그레이션 적용.
   - `EventProgressModel`의 questId 중복 검색 캡슐화(TryGetQuestProgress) 설계.
@@ -232,4 +235,4 @@ public class SpecialPackageQuestReward : BaseQuestReward
   - 지수 백오프 기반 `RetrySaveSystemDecorator` 설계 및 DI 바인딩.
   - DTO 내부의 DateTime 파싱 캐싱 및 5종 재화 HUD 리액티브 동기화 연동.
 - **검증 방법**:
-  - 유니티 테스트 러너(Unity Test Runner) EditMode 내 22종 유닛 테스트 및 PlayMode 내 6종 통합 시나리오 테스트(총 28종) 100% Passed 완료 검증.
+  - 유니티 테스트 러너(Unity Test Runner) EditMode 내 24종 유닛 테스트 및 PlayMode 내 6종 통합 시나리오 테스트(총 30종) 100% Passed 완료 검증.

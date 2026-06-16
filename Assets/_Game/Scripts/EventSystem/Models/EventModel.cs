@@ -128,20 +128,29 @@ namespace BePex.EventSystem.Models
         }
 
         /// <summary>
-        /// [기능]: 활성화된 모든 이벤트 목록 중 현재 시간에 유효한 이벤트만 필터링하여 반환합니다. DTO의 DateTime 파싱 캐싱 헬퍼를 활용해 성능을 최적화합니다.
+        /// [기능]: 활성화된 모든 이벤트 목록 중 현재 시간에 유효한 이벤트만 필터링하여 버퍼 리스트에 채워 넣습니다. 가비지 생성을 방지합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: DTO 날짜 캐싱 헬퍼를 사용하도록 변경하여 반복 파싱 부하 제거
+        /// [수정 내용]: 가비지 생성을 방지하는 NonAlloc 방식으로 전면 개편 및 기존 GetActiveEvents 폐기
         /// </summary>
-        public List<EventDefinitionDTO> GetActiveEvents()
+        public void GetActiveEventsNonAlloc(List<EventDefinitionDTO> resultsBuffer)
         {
+            if (resultsBuffer == null)
+            {
+                return;
+            }
+            resultsBuffer.Clear();
+
             if (m_timeProvider == null)
             {
-                return m_activeEvents;
+                for (int i = 0; i < m_activeEvents.Count; i++)
+                {
+                    resultsBuffer.Add(m_activeEvents[i]);
+                }
+                return;
             }
             DateTime currentTime = m_timeProvider.GetCurrentTime();
-            var validEvents = new List<EventDefinitionDTO>();
 
             for (int i = 0; i < m_activeEvents.Count; i++)
             {
@@ -172,11 +181,9 @@ namespace BePex.EventSystem.Models
 
                 if (isValid)
                 {
-                    validEvents.Add(evt);
+                    resultsBuffer.Add(evt);
                 }
             }
-
-            return validEvents;
         }
 
         /// <summary>

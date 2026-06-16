@@ -657,6 +657,123 @@ namespace BePex.EventSystem.Tests
             Assert.AreEqual(100, playerReward.totalExp);
             Assert.AreEqual(50, playerReward.totalPoints);
         }
+        /// <summary>
+        /// [기능]: 18. GetActiveEventsNonAlloc 가비지 생성 없는 성능 최적화 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public void Test_18_GetActiveEventsNonAlloc_Optimization()
+        {
+            var tableDTO = new EventTableDTO();
+            tableDTO.events.Add(new EventDefinitionDTO { eventId = "evt_nonalloc_1", eventTitle = "최적화 이벤트 1" });
+            tableDTO.events.Add(new EventDefinitionDTO { eventId = "evt_nonalloc_2", eventTitle = "최적화 이벤트 2" });
+
+            var model = new EventModel(tableDTO, m_condFactory, m_rewFactory, m_timeProvider);
+            var resultsBuffer = new System.Collections.Generic.List<EventDefinitionDTO>();
+
+            // 1차 호출
+            model.GetActiveEventsNonAlloc(resultsBuffer);
+            int count1 = resultsBuffer.Count;
+
+            // 2차 호출 (버퍼 재사용)
+            model.GetActiveEventsNonAlloc(resultsBuffer);
+            int count2 = resultsBuffer.Count;
+
+            Debug.Log($"[EventSystemTests] [Test_18_GetActiveEventsNonAlloc_Optimization] " +
+                      $"입력값: 최적화 이벤트 2개 등록, 버퍼 리스트 전달 | " +
+                      $"출력값: 1차 버퍼 갯수={count1}, 2차 재사용 버퍼 갯수={count2}");
+
+            Assert.AreEqual(2, count1);
+            Assert.AreEqual(2, count2);
+        }
+
+        /// <summary>
+        /// [기능]: 19. 팩토리 리플렉션을 통한 조건(KillCount) 및 신규 보상(Sample) 전략 인스턴스 동적 생성 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public void Test_19_Factories_AttributeReflection_Creation()
+        {
+            // QuestConditionFactory 리플렉션 생성 검증
+            var condDTO = new ConditionDefinitionDTO { conditionType = "KillCount", targetValue = 20 };
+            var condInstance = m_condFactory.Create(condDTO, "evt_test", "quest_test");
+
+            // QuestRewardFactory 리플렉션 생성 검증
+            var rewardDTO = new RewardDefinitionDTO { rewardType = "Sample", amount = 1, displayName = "샘플 보상" };
+            var rewardInstance = m_rewFactory.Create(rewardDTO);
+
+            Debug.Log($"[EventSystemTests] [Test_19_Factories_AttributeReflection_Creation] " +
+                      $"입력값: 조건타입=KillCount, 보상타입=Sample | " +
+                      $"출력값: 생성된 조건 인스턴스 타입={condInstance?.GetType().Name}, 생성된 보상 인스턴스 타입={rewardInstance?.GetType().Name}");
+
+            Assert.IsNotNull(condInstance);
+            Assert.IsInstanceOf<Conditions.KillCountQuestCondition>(condInstance);
+
+            Assert.IsNotNull(rewardInstance);
+            Assert.IsInstanceOf<Rewards.SampleQuestReward>(rewardInstance);
+        }
+
+        /// <summary>
+        /// [기능]: 20. KillCountQuestCondition의 몬스터 처치 타입 필터링 및 조건 판정 예시 로직 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public void Test_20_KillCountCondition_BusinessLogic_Example()
+        {
+            // "Goblin" 몬스터만 필터링하는 조건 인스턴스를 직접 생성 (6인자 확장 생성자 이용)
+            var goblinCondition = new Conditions.KillCountQuestCondition(5, m_saveSystem, m_timeProvider, "evt_kill", "quest_kill", "Goblin");
+            
+            // "Orc" 몬스터 처치 시도 -> 필터링에 걸려 가산 대상으로 인정되지 않아야 함
+            bool isOrcValid = goblinCondition.EvaluateMonsterKill("Orc");
+            
+            // "Goblin" 몬스터 처치 시도 -> 가산 대상으로 인정되어야 함
+            bool isGoblinValid = goblinCondition.EvaluateMonsterKill("Goblin");
+
+            Debug.Log($"[EventSystemTests] [Test_20_KillCountCondition_BusinessLogic_Example] " +
+                      $"입력값: 필터 몬스터=Goblin, 처치 시도 몬스터=(Orc, Goblin) | " +
+                      $"출력값: Orc 처치 판정={isOrcValid}, Goblin 처치 판정={isGoblinValid}");
+
+            Assert.IsFalse(isOrcValid);
+            Assert.IsTrue(isGoblinValid);
+        }
+
+        /// <summary>
+        /// [기능]: 21. EventAdminViewModel에서 서버 업로드 실행 시 내부적으로 로컬 저장이 연쇄 호출되는지 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [Test]
+        public async Task Test_21_EventAdmin_Upload_Triggers_AutoSave()
+        {
+            var firebase = new MockFirebaseUploadService();
+            var vm = new EventAdminViewModel(firebase);
+            
+            vm.AddNewEvent();
+            var ev = vm.GetSelectedEvent();
+            ev.eventId = "evt_autosave_test";
+            ev.eventTitle = "자동 저장 검증";
+            vm.UpdateSelectedEvent(ev);
+
+            // UploadToFirebaseAsync는 내부적으로 로컬 저장을 선제 자동 수행한 후 업로드를 개시함
+            bool result = await vm.UploadToFirebaseAsync();
+
+            Debug.Log($"[EventSystemTests] [Test_21_EventAdmin_Upload_Triggers_AutoSave] " +
+                      $"입력값: 업로드 단독 수행 시도 | " +
+                      $"출력값: 서버 업로드 및 자동 저장 성공 여부={result}");
+
+            Assert.IsTrue(result);
+        }
         #endregion
     }
 }

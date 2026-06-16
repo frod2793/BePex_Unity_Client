@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BePex.EventSystem.Models;
 using BePex.EventSystem.Interfaces;
 
@@ -16,6 +17,7 @@ namespace BePex.EventSystem.ViewModels
         private readonly EventModel m_eventModel;
         private string m_lastClaimedEventId;
         private string m_lastClaimedQuestId;
+        private readonly List<DTOs.EventDefinitionDTO> m_cachedActiveEvents = new List<DTOs.EventDefinitionDTO>();
         #endregion
 
         #region 가공 프로퍼티
@@ -141,17 +143,18 @@ namespace BePex.EventSystem.ViewModels
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: m_lastClaimedQuestId가 활성화되어 있으면 해당 퀘스트의 보상만 노출하도록 개별 필터링 보완
+        /// [수정 내용]: NonAlloc 최적화 및 m_lastClaimedQuestId가 활성화되어 있으면 해당 퀘스트의 보상만 노출하도록 개별 필터링 보완
         /// </summary>
-        public System.Collections.Generic.List<DTOs.RewardDefinitionDTO> GetClaimedRewards()
+        public List<DTOs.RewardDefinitionDTO> GetClaimedRewards()
         {
-            var claimedList = new System.Collections.Generic.List<DTOs.RewardDefinitionDTO>();
+            var claimedList = new List<DTOs.RewardDefinitionDTO>();
             if (m_eventModel == null || string.IsNullOrEmpty(m_lastClaimedEventId))
             {
                 return claimedList;
             }
 
-            var events = m_eventModel.GetActiveEvents();
+            m_eventModel.GetActiveEventsNonAlloc(m_cachedActiveEvents);
+            var events = m_cachedActiveEvents;
             for (int i = 0; i < events.Count; i++)
             {
                 if (events[i].eventId == m_lastClaimedEventId)

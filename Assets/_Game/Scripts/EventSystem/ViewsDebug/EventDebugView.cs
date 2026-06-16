@@ -50,14 +50,18 @@ namespace BePex.EventSystem.ViewsDebug
         /// <summary>
         /// [기능]: 씬 파괴 및 드로어 소멸 시 비동기 토글 연출 태스크를 해제합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: CancellationTokenSource 로컬 복사 해제 구조로 NullReferenceException 방지
         /// </summary>
         private void OnDestroy()
         {
             if (m_slideCts != null)
             {
-                m_slideCts.Cancel();
-                m_slideCts.Dispose();
+                var cts = m_slideCts;
                 m_slideCts = null;
+                cts.Cancel();
+                cts.Dispose();
             }
         }
 
@@ -237,6 +241,9 @@ namespace BePex.EventSystem.ViewsDebug
         /// <summary>
         /// [기능]: 슬라이드 드로어 열기/닫기 토글 처리를 실행합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: CancellationTokenSource 로컬 복사 해제 구조로 비동기 finally와의 NullReferenceException 경쟁 상태 해결
         /// </summary>
         public void func_ToggleDrawer()
         {
@@ -244,9 +251,10 @@ namespace BePex.EventSystem.ViewsDebug
 
             if (m_slideCts != null)
             {
-                m_slideCts.Cancel();
-                m_slideCts.Dispose();
+                var cts = m_slideCts;
                 m_slideCts = null;
+                cts.Cancel();
+                cts.Dispose();
             }
 
             float targetX = m_isDrawerOpen ? 0f : -m_drawerWidth;

@@ -8,6 +8,7 @@ using BePex.EventSystem.ViewModelsDebug;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Factories;
 using BePex.EventSystem.Infrastructure;
+using BePex.EventSystem.Data;
 
 namespace BePex.EventSystem.Tests.PlayMode
 {
@@ -81,7 +82,7 @@ namespace BePex.EventSystem.Tests.PlayMode
             });
             questDto.rewards.Add(new RewardDefinitionDTO
             {
-                rewardType = "CreditReword",
+                rewardType = "CreditReward",
                 amount = 5,
                 displayName = "테스트크레딧"
             });
@@ -133,7 +134,8 @@ namespace BePex.EventSystem.Tests.PlayMode
                 {
                     Debug.Log("[EventIntegrationTests] ======= [1단계: 이벤트 목록 표시 및 진행도 표시 검증] =======");
                     // 1. 이벤트 목록 표시 검증
-                    var activeEvents = m_model.GetActiveEvents();
+                    var activeEvents = new System.Collections.Generic.List<EventDefinitionDTO>();
+                    m_model.GetActiveEventsNonAlloc(activeEvents);
                     Assert.AreEqual(1, activeEvents.Count, "[EventIntegrationTests] 활성화된 이벤트 목록 개수가 일치하지 않습니다.");
                     Assert.AreEqual("evt_integration_test_id", activeEvents[0].eventId, "[EventIntegrationTests] 활성 이벤트 ID가 일치하지 않습니다.");
 
@@ -303,7 +305,8 @@ namespace BePex.EventSystem.Tests.PlayMode
 
                     m_model.Reload();
 
-                    var activeEvents = m_model.GetActiveEvents();
+                    var activeEvents = new System.Collections.Generic.List<EventDefinitionDTO>();
+                    m_model.GetActiveEventsNonAlloc(activeEvents);
                     Assert.AreEqual(3, activeEvents.Count, "[Test_Multi_Condition] 활성화된 이벤트는 3개여야 합니다.");
 
                     // 1. 쉬운 미션 5만큼 달성 시도
@@ -409,14 +412,15 @@ namespace BePex.EventSystem.Tests.PlayMode
 
                     // 현재 시간: 2026-06-15
                     m_timeProvider.CurrentTime = new System.DateTime(2026, 6, 15);
-                    var activeEvents = m_model.GetActiveEvents();
+                    var activeEvents = new System.Collections.Generic.List<EventDefinitionDTO>();
+                    m_model.GetActiveEventsNonAlloc(activeEvents);
                     
                     Assert.AreEqual(1, activeEvents.Count, "[Test_Time_Expiration] 활성 이벤트는 1개여야 합니다.");
                     Assert.AreEqual("evt_current", activeEvents[0].eventId, "[Test_Time_Expiration] 현재 진행 중인 이벤트만 필터링되어야 합니다.");
 
                     // 시간을 만료 기간인 2026-08-01로 강제 변경
                     m_timeProvider.CurrentTime = new System.DateTime(2026, 8, 1);
-                    activeEvents = m_model.GetActiveEvents();
+                    m_model.GetActiveEventsNonAlloc(activeEvents);
                     
                     Assert.AreEqual(0, activeEvents.Count, "[Test_Time_Expiration] 시간이 만료되어 활성화된 이벤트가 없어야 합니다.");
                     
@@ -439,6 +443,77 @@ namespace BePex.EventSystem.Tests.PlayMode
             {
                 yield return null;
             }
+        }
+
+        /// <summary>
+        /// [기능]: 22. EventDebugView의 func_ToggleDrawer 빠르게 스팸 클릭 호출 시 NullReferenceException 방지 검증
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 작성
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Test_22_EventDebugView_ToggleDrawer_SpamClick_Safety()
+        {
+            // 1. 테스트 오브젝트 및 뷰 컴포넌트 생성
+            var viewGo = new GameObject("TestDebugView", typeof(RectTransform), typeof(BePex.EventSystem.ViewsDebug.EventDebugView));
+            var view = viewGo.GetComponent<BePex.EventSystem.ViewsDebug.EventDebugView>();
+
+            // 2. 드로어 패널 모킹용 자식 RectTransform 생성
+            var panelGo = new GameObject("DrawerPanel", typeof(RectTransform));
+            panelGo.transform.SetParent(viewGo.transform);
+            var panelRect = panelGo.GetComponent<RectTransform>();
+
+            // 3. 리플렉션으로 드로어 패널 및 멤버 정보 바인딩
+            var panelField = typeof(BePex.EventSystem.ViewsDebug.EventDebugView).GetField("m_drawerPanel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (panelField != null)
+            {
+                panelField.SetValue(view, panelRect);
+            }
+            
+            var widthField = typeof(BePex.EventSystem.ViewsDebug.EventDebugView).GetField("m_drawerWidth", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (widthField != null)
+            {
+                widthField.SetValue(view, 100f);
+            }
+
+            var durationField = typeof(BePex.EventSystem.ViewsDebug.EventDebugView).GetField("m_slideDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (durationField != null)
+            {
+                durationField.SetValue(view, 0.1f);
+            }
+
+            // 4. 뷰모델 바이패스 셋업 및 바인딩
+            var conditionRegistry = ScriptableObject.CreateInstance<ConditionTypeRegistrySO>();
+            var debugVM = new EventDebugViewModel(m_model, m_saveSystem, m_timeProvider, m_playerReward, m_hudVM, conditionRegistry);
+            view.Bind(debugVM);
+
+            // 5. 프레임을 나누어 슬라이드 애니메이션 스팸 클릭 시뮬레이션
+            bool hasException = false;
+            try
+            {
+                // 연속 토글 호출 (0.01초 간격으로 스팸 클릭 모사)
+                for (int i = 0; i < 5; i++)
+                {
+                    view.func_ToggleDrawer();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                hasException = true;
+                Debug.LogError($"[EventIntegrationTests] [Test_22] 스팸 클릭 시 오류 발생: {ex.Message}");
+            }
+
+            Assert.IsFalse(hasException, "[EventIntegrationTests] EventDebugView 토글 스팸 클릭 도중 널 참조 예외가 검출되었습니다.");
+
+            // 0.2초간 플레이모드 대기하며 비동기 연출 가라앉을 때까지 대기
+            yield return new WaitForSeconds(0.2f);
+
+            // 6. 메모리 정리
+            GameObject.Destroy(viewGo);
+            ScriptableObject.DestroyImmediate(conditionRegistry);
+            
+            Debug.Log("[EventIntegrationTests] Test_22 완료: 스팸 클릭 토글 시 NullReferenceException 누출 방지 입증.");
         }
     }
 }

@@ -130,6 +130,19 @@ namespace BePex.EventSystem.Infrastructure
             var adminVM = new EventAdminViewModel(firebaseService, m_conditionTypeRegistry, m_rewardTypeRegistry);
             adminVM.SetEventTable(eventTableDTO);
 
+#if UNITY_EDITOR
+            // 에디터 상에서 저장 완료 시 에셋 데이터베이스 새로고침 및 어드레서블 자산 자동 재빌드 연동
+            adminVM.OnSaveCompleted += (success) =>
+            {
+                if (success)
+                {
+                    UnityEditor.AssetDatabase.Refresh();
+                    Debug.Log("[EventAdminSceneInitializer] 에디터 에셋 데이터베이스가 성공적으로 새로고침되었습니다.");
+                    RebuildAddressablesOnEditor();
+                }
+            };
+#endif
+
             if (m_adminView != null)
             {
                 m_adminView.Bind(adminVM);
@@ -141,6 +154,56 @@ namespace BePex.EventSystem.Infrastructure
 
             Debug.Log("[EventAdminSceneInitializer] 이벤트 관리자 씬 의존성 주입 및 수동 DI 조립 완료.");
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// [기능]: 에디터 재생 환경에서 event_table JSON 에셋의 변경 사항을 어드레서블 로컬 빌드 데이터에 강제 반영합니다. (리플렉션을 통한 에디터 컴파일 의존성 제거)
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 컴파일 CS0234 에러 방지를 위해 리플렉션 동적 호출 적용
+        /// </summary>
+        private void RebuildAddressablesOnEditor()
+        {
+            try
+            {
+                var settingsDefaultObjectType = System.Type.GetType("UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject, Unity.Addressables.Editor");
+                if (settingsDefaultObjectType == null)
+                {
+                    return;
+                }
+
+                var settingsProperty = settingsDefaultObjectType.GetProperty("Settings", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (settingsProperty == null)
+                {
+                    return;
+                }
+
+                var settings = settingsProperty.GetValue(null);
+                if (settings == null)
+                {
+                    return;
+                }
+
+                var settingsType = System.Type.GetType("UnityEditor.AddressableAssets.Settings.AddressableAssetSettings, Unity.Addressables.Editor");
+                if (settingsType == null)
+                {
+                    return;
+                }
+
+                var buildMethod = settingsType.GetMethod("BuildPlayerContent", new System.Type[] { settingsType });
+                if (buildMethod != null)
+                {
+                    buildMethod.Invoke(null, new object[] { settings });
+                    Debug.Log("[EventAdminSceneInitializer] Addressables 빌드 컨텐츠가 자동으로 재빌드되었습니다.");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[EventAdminSceneInitializer] Addressables 자동 빌드 중 오류 발생 (무시 가능): {ex.Message}");
+            }
+        }
+#endif
         #endregion
     }
 }

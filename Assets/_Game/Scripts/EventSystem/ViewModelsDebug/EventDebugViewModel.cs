@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using BePex.EventSystem.Models;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.DTOs;
@@ -20,6 +21,7 @@ namespace BePex.EventSystem.ViewModelsDebug
         private readonly PlayerRewardModel m_playerReward;
         private readonly CurrencyHUDViewModel m_hudViewModel;
         private readonly ConditionTypeRegistrySO m_conditionTypeRegistry;
+        private readonly List<EventDefinitionDTO> m_cachedActiveEvents = new List<EventDefinitionDTO>();
         #endregion
 
         #region 초기화
@@ -58,15 +60,23 @@ namespace BePex.EventSystem.ViewModelsDebug
         }
 
         /// <summary>
-        /// [기능]: 현재 로드된 활성 이벤트 목록을 반환합니다.
+        /// [기능]: 현재 로드된 활성 이벤트 목록을 가비지 생성 없이 내부 캐시 버퍼를 통해 반환합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 추가
+        /// [수정 내용]: NonAlloc 구조 적용 및 using 지시문 준수를 위한 타입 네이밍 간소화
         /// </summary>
-        public System.Collections.Generic.List<EventDefinitionDTO> GetActiveEvents()
+        public IReadOnlyList<EventDefinitionDTO> GetActiveEvents()
         {
-            return m_eventModel != null ? m_eventModel.GetActiveEvents() : new System.Collections.Generic.List<EventDefinitionDTO>();
+            if (m_eventModel != null)
+            {
+                m_eventModel.GetActiveEventsNonAlloc(m_cachedActiveEvents);
+            }
+            else
+            {
+                m_cachedActiveEvents.Clear();
+            }
+            return m_cachedActiveEvents;
         }
 
         /// <summary>
@@ -146,7 +156,7 @@ namespace BePex.EventSystem.ViewModelsDebug
             if (m_conditionTypeRegistry != null && m_conditionTypeRegistry.ConditionTypes != null)
             {
                 var types = m_conditionTypeRegistry.ConditionTypes;
-                var validNames = new System.Collections.Generic.List<string>();
+                var validNames = new List<string>();
                 for (int i = 0; i < types.Count; i++)
                 {
                     if (types[i] != null && !string.IsNullOrEmpty(types[i].TypeName))
@@ -267,13 +277,13 @@ namespace BePex.EventSystem.ViewModelsDebug
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 리플렉션 조회를 GetBalances API로 대체
+        /// [수정 내용]: 리플렉션 조회를 GetBalances API로 대체 및 using 가이드 준수
         /// </summary>
-        public System.Collections.Generic.Dictionary<string, int> GetRewardStatus()
+        public Dictionary<string, int> GetRewardStatus()
         {
             if (m_playerReward == null)
             {
-                return new System.Collections.Generic.Dictionary<string, int>();
+                return new Dictionary<string, int>();
             }
             return m_playerReward.GetBalances();
         }

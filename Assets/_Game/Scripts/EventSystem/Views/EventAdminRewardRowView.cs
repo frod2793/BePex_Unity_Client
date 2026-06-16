@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Data;
-using BePex.EventSystem.Utils;
 using BePex.EventSystem.Factories;
 using System;
 
@@ -37,7 +37,7 @@ namespace BePex.EventSystem.Views
         /// [마지막 수정 작성자]: 윤승종
         /// [수정 내용]: 최초 정의
         /// </summary>
-        public void Bind(RewardDefinitionDTO dto, Action<EventAdminRewardRowView> onRemove)
+        public void Bind(RewardDefinitionDTO dto, Action<EventAdminRewardRowView> onRemove, IReadOnlyList<RewardTypeSO> availableTypes)
         {
             m_dto = dto;
             m_onRemove = onRemove;
@@ -46,12 +46,32 @@ namespace BePex.EventSystem.Views
             {
                 m_typeDropdown.onValueChanged.RemoveAllListeners();
                 m_typeDropdown.ClearOptions();
-                var options = EnumDisplayHelper.GetDisplayNames<RewardDefinitionSO.RewardType>();
+                
+                var options = new System.Collections.Generic.List<string>();
+                if (availableTypes != null)
+                {
+                    for (int i = 0; i < availableTypes.Count; i++)
+                    {
+                        if (availableTypes[i] != null)
+                        {
+                            options.Add(availableTypes[i].DisplayName);
+                        }
+                    }
+                }
                 m_typeDropdown.AddOptions(options);
 
-                int optionIndex = GetDropdownOptionIndex(m_dto.rewardType);
+                int optionIndex = GetDropdownOptionIndex(m_dto.rewardType, availableTypes);
                 m_typeDropdown.value = optionIndex;
-                m_typeDropdown.onValueChanged.AddListener(func_OnTypeChanged);
+                m_typeDropdown.onValueChanged.AddListener((index) =>
+                {
+                    if (m_dto != null && availableTypes != null && index >= 0 && index < availableTypes.Count)
+                    {
+                        if (availableTypes[index] != null)
+                        {
+                            m_dto.rewardType = availableTypes[index].TypeName;
+                        }
+                    }
+                });
             }
 
             if (m_amountInput != null)
@@ -108,25 +128,7 @@ namespace BePex.EventSystem.Views
         #endregion
 
         #region UI 이벤트 핸들러
-        /// <summary>
-        /// [기능]: 드롭다운의 보상 타입 수정 변경 발생 시 DTO에 인가하는 UI 이벤트 콜백.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
-        /// </summary>
-        private void func_OnTypeChanged(int index)
-        {
-            if (m_dto != null)
-            {
-                if (m_typeDropdown != null)
-                {
-                    string displayName = m_typeDropdown.options[index].text;
-                    var typeEnum = EnumDisplayHelper.GetEnumValue<RewardDefinitionSO.RewardType>(displayName);
-                    m_dto.rewardType = typeEnum.ToString();
-                }
-            }
-        }
+        // func_OnTypeChanged는 람다 바인딩으로 대체되었습니다.
 
         /// <summary>
         /// [기능]: 수량 InputField 변경 발생 시 DTO에 인가하는 UI 이벤트 콜백.
@@ -192,27 +194,35 @@ namespace BePex.EventSystem.Views
         /// <summary>
         /// [기능]: 보상 타입 스트링과 일치하는 드롭다운의 인덱스를 선별합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: RewardTypeSO 레지스트리 목록을 기반으로 인덱스 탐색하도록 변경
         /// </summary>
-        private int GetDropdownOptionIndex(string rewardType)
+        private int GetDropdownOptionIndex(string rewardType, IReadOnlyList<RewardTypeSO> availableTypes)
         {
-            if (m_typeDropdown == null)
+            if (m_typeDropdown == null || availableTypes == null)
             {
                 return 0;
             }
-            string searchName = rewardType;
-            if (Enum.TryParse<RewardDefinitionSO.RewardType>(rewardType, true, out var typeEnum))
+
+            string searchDisplayName = string.Empty;
+            for (int i = 0; i < availableTypes.Count; i++)
             {
-                searchName = EnumDisplayHelper.GetDisplayName(typeEnum);
+                if (availableTypes[i] != null && availableTypes[i].TypeName.Equals(rewardType, StringComparison.OrdinalIgnoreCase))
+                {
+                    searchDisplayName = availableTypes[i].DisplayName;
+                    break;
+                }
             }
 
-            for (int i = 0; i < m_typeDropdown.options.Count; i++)
+            if (!string.IsNullOrEmpty(searchDisplayName))
             {
-                if (m_typeDropdown.options[i].text.Equals(searchName, StringComparison.OrdinalIgnoreCase))
+                for (int i = 0; i < m_typeDropdown.options.Count; i++)
                 {
-                    return i;
+                    if (m_typeDropdown.options[i].text.Equals(searchDisplayName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return i;
+                    }
                 }
             }
             return 0;

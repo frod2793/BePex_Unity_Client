@@ -7,7 +7,7 @@ namespace BePex.EventSystem.Rewards
     /// [기능]: 플레이어 자산에 퀘스트 완료 보상으로 경험치를 부여해 주는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestReward(RewardDefinitionSO.RewardType.Exp)]
+    [QuestReward("Exp")]
     public class ExpQuestReward : BaseQuestReward
     {
         #region 초기화
@@ -36,7 +36,7 @@ namespace BePex.EventSystem.Rewards
         {
             if (playerReward != null)
             {
-                playerReward.AddCurrency(RewardDefinitionSO.RewardType.Exp, m_amount);
+                playerReward.AddCurrency("Exp", m_amount);
             }
         }
         #endregion

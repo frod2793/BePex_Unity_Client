@@ -18,7 +18,7 @@ namespace BePex.EventSystem.Factories
         #region 내부 필드
         private readonly ISaveSystem m_saveSystem;
         private readonly ITimeProvider m_timeProvider;
-        private readonly Dictionary<ConditionDefinitionSO.ConditionType, Type> m_registry;
+        private readonly Dictionary<string, Type> m_registry;
         #endregion
 
         #region 초기화
@@ -33,7 +33,7 @@ namespace BePex.EventSystem.Factories
         {
             m_saveSystem = saveSystem;
             m_timeProvider = timeProvider;
-            m_registry = new Dictionary<ConditionDefinitionSO.ConditionType, Type>();
+            m_registry = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             BuildRegistry();
         }
 
@@ -54,7 +54,7 @@ namespace BePex.EventSystem.Factories
                     var attr = type.GetCustomAttribute<QuestConditionAttribute>();
                     if (attr != null)
                     {
-                        m_registry[attr.Type] = type;
+                        m_registry[attr.TypeName] = type;
                     }
                 }
             }
@@ -67,16 +67,16 @@ namespace BePex.EventSystem.Factories
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: questId 인자로 리네이밍
+        /// [수정 내용]: Type Object 패턴에 맞춰 ConditionTypeSO 참조를 이용해 생성하도록 변경
         /// </summary>
         public IQuestCondition Create(ConditionDefinitionSO definition, string eventId, string questId)
         {
-            if (definition == null)
+            if (definition == null || definition.Type == null)
             {
                 return null;
             }
 
-            return CreateInternal(definition.Type, definition.TargetValue, eventId, questId);
+            return CreateInternal(definition.Type.TypeName, definition.TargetValue, eventId, questId);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace BePex.EventSystem.Factories
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: questId 인자로 리네이밍
+        /// [수정 내용]: 이넘 파싱 단계를 제거하고 문자열 타입 식별자를 직접 사용
         /// </summary>
         public IQuestCondition Create(ConditionDefinitionDTO definition, string eventId, string questId)
         {
@@ -93,13 +93,7 @@ namespace BePex.EventSystem.Factories
                 return null;
             }
 
-            if (Enum.TryParse(definition.conditionType, out ConditionDefinitionSO.ConditionType typeEnum))
-            {
-                return CreateInternal(typeEnum, definition.targetValue, eventId, questId);
-            }
-
-            Debug.LogError($"[QuestConditionFactory] 매핑되지 않은 조건 타입: {definition.conditionType}");
-            return null;
+            return CreateInternal(definition.conditionType, definition.targetValue, eventId, questId);
         }
         #endregion
 
@@ -109,16 +103,16 @@ namespace BePex.EventSystem.Factories
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 생성자 인자에 questId 추가 전달
+        /// [수정 내용]: 조건 타입을 문자열 식별자로 받도록 수정
         /// </summary>
-        private IQuestCondition CreateInternal(ConditionDefinitionSO.ConditionType type, int targetValue, string eventId, string questId)
+        private IQuestCondition CreateInternal(string typeName, int targetValue, string eventId, string questId)
         {
-            if (m_registry.TryGetValue(type, out Type conditionType))
+            if (typeName != null && m_registry.TryGetValue(typeName, out Type conditionType))
             {
                 return (IQuestCondition)Activator.CreateInstance(conditionType, targetValue, m_saveSystem, m_timeProvider, eventId, questId);
             }
 
-            Debug.LogError($"[QuestConditionFactory] 매핑되지 않은 조건 타입: {type}");
+            Debug.LogError($"[QuestConditionFactory] 매핑되지 않은 조건 타입: {typeName}");
             return null;
         }
         #endregion

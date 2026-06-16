@@ -229,10 +229,10 @@ namespace BePex.EventSystem.Tests
         {
             await m_saveSystem.ClearAllAsync();
             var playerReward = new PlayerRewardModel();
-            playerReward.AddCurrency(RewardDefinitionSO.RewardType.Point, 100);
+            playerReward.AddCurrency("Point", 100);
 
             int spendAmount = 40;
-            playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.Point, spendAmount);
+            playerReward.TrySpendCurrency("Point", spendAmount);
 
             await m_saveSystem.SaveRewardStateAsync(playerReward);
             var loadedReward = await m_saveSystem.LoadRewardStateAsync();

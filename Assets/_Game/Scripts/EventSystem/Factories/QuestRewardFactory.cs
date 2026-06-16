@@ -16,7 +16,7 @@ namespace BePex.EventSystem.Factories
     public class QuestRewardFactory
     {
         #region 내부 필드
-        private readonly Dictionary<RewardDefinitionSO.RewardType, Type> m_registry;
+        private readonly Dictionary<string, Type> m_registry;
         #endregion
 
         #region 초기화
@@ -29,7 +29,7 @@ namespace BePex.EventSystem.Factories
         /// </summary>
         public QuestRewardFactory()
         {
-            m_registry = new Dictionary<RewardDefinitionSO.RewardType, Type>();
+            m_registry = new Dictionary<string, Type>();
             BuildRegistry();
         }
 
@@ -50,7 +50,7 @@ namespace BePex.EventSystem.Factories
                     var attr = type.GetCustomAttribute<QuestRewardAttribute>();
                     if (attr != null)
                     {
-                        m_registry[attr.Type] = type;
+                        m_registry[attr.TypeName] = type;
                     }
                 }
             }
@@ -72,7 +72,13 @@ namespace BePex.EventSystem.Factories
                 return null;
             }
 
-            return CreateInternal(definition.Type, definition.Amount, definition.DisplayName);
+            string typeName = string.Empty;
+            if (definition.Type != null)
+            {
+                typeName = definition.Type.TypeName;
+            }
+
+            return CreateInternal(typeName, definition.Amount, definition.DisplayName);
         }
 
         /// <summary>
@@ -89,13 +95,7 @@ namespace BePex.EventSystem.Factories
                 return null;
             }
 
-            if (Enum.TryParse(definition.rewardType, out RewardDefinitionSO.RewardType typeEnum))
-            {
-                return CreateInternal(typeEnum, definition.amount, definition.displayName);
-            }
-
-            Debug.LogError($"[QuestRewardFactory] 매핑되지 않은 보상 타입: {definition.rewardType}");
-            return null;
+            return CreateInternal(definition.rewardType, definition.amount, definition.displayName);
         }
         #endregion
 
@@ -107,14 +107,19 @@ namespace BePex.EventSystem.Factories
         /// [마지막 수정 작성자]: 윤승종
         /// [수정 내용]: IQuestReward 반환 적용
         /// </summary>
-        private IQuestReward CreateInternal(RewardDefinitionSO.RewardType type, int amount, string displayName)
+        private IQuestReward CreateInternal(string typeName, int amount, string displayName)
         {
-            if (m_registry.TryGetValue(type, out Type rewardType))
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return null;
+            }
+
+            if (m_registry.TryGetValue(typeName, out Type rewardType))
             {
                 return (IQuestReward)Activator.CreateInstance(rewardType, amount, displayName);
             }
 
-            Debug.LogError($"[QuestRewardFactory] 매핑되지 않은 보상 타입: {type}");
+            Debug.LogError($"[QuestRewardFactory] 매핑되지 않은 보상 타입: {typeName}");
             return null;
         }
         #endregion

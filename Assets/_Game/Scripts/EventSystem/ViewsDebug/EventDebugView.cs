@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using BePex.EventSystem.ViewModelsDebug;
 using TMPro;
 using System.Collections;
+using System.Threading;
 
 namespace BePex.EventSystem.ViewsDebug
 {
@@ -42,10 +43,24 @@ namespace BePex.EventSystem.ViewsDebug
         private EventDebugViewModel m_viewModel;
         private readonly System.Collections.Generic.List<GameObject> m_spawnedItems = new System.Collections.Generic.List<GameObject>();
         private bool m_isDrawerOpen = false;
-        private Coroutine m_slideCoroutine;
+        private CancellationTokenSource m_slideCts;
         #endregion
 
         #region 유니티 생명주기
+        /// <summary>
+        /// [기능]: 씬 파괴 및 드로어 소멸 시 비동기 토글 연출 태스크를 해제합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private void OnDestroy()
+        {
+            if (m_slideCts != null)
+            {
+                m_slideCts.Cancel();
+                m_slideCts.Dispose();
+                m_slideCts = null;
+            }
+        }
+
         /// <summary>
         /// [기능]: 드로어 패널의 앵커 및 토글 이벤트 리스너를 바인딩하고 스크롤 뷰 레이아웃 요소를 제어합니다.
         /// [작성자]: 윤승종
@@ -227,39 +242,64 @@ namespace BePex.EventSystem.ViewsDebug
         {
             m_isDrawerOpen = !m_isDrawerOpen;
 
-            if (m_slideCoroutine != null)
+            if (m_slideCts != null)
             {
-                StopCoroutine(m_slideCoroutine);
+                m_slideCts.Cancel();
+                m_slideCts.Dispose();
+                m_slideCts = null;
             }
 
             float targetX = m_isDrawerOpen ? 0f : -m_drawerWidth;
-            m_slideCoroutine = StartCoroutine(SlideDrawer(new Vector2(targetX, 0f)));
+            m_slideCts = new CancellationTokenSource();
+            CancellationToken token = m_slideCts.Token;
+
+            _ = SlideDrawerAsync(new Vector2(targetX, 0f), token);
             UpdateToggleText();
         }
         #endregion
 
         #region 내부 렌더링 및 애니메이션
         /// <summary>
-        /// [기능]: 드로어 패널의 anchoredPosition을 코루틴을 통해 부드럽게 보간 이동시킵니다.
+        /// [기능]: 드로어 패널의 anchoredPosition을 Awaitable을 통해 부드럽게 보간 이동시킵니다.
         /// [작성자]: 윤승종
         /// </summary>
-        private IEnumerator SlideDrawer(Vector2 targetPosition)
+        private async Awaitable SlideDrawerAsync(Vector2 targetPosition, CancellationToken cancellationToken)
         {
-            if (m_drawerPanel == null) yield break;
+            if (m_drawerPanel == null)
+            {
+                return;
+            }
 
             Vector2 startPosition = m_drawerPanel.anchoredPosition;
             float elapsedTime = 0f;
 
-            while (elapsedTime < m_slideDuration)
+            try
             {
-                elapsedTime += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsedTime / m_slideDuration);
-                m_drawerPanel.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, t);
-                yield return null;
-            }
+                while (elapsedTime < m_slideDuration)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-            m_drawerPanel.anchoredPosition = targetPosition;
-            m_slideCoroutine = null;
+                    elapsedTime += Time.deltaTime;
+                    float t = Mathf.SmoothStep(0f, 1f, elapsedTime / m_slideDuration);
+                    m_drawerPanel.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, t);
+
+                    await Awaitable.NextFrameAsync(cancellationToken);
+                }
+
+                m_drawerPanel.anchoredPosition = targetPosition;
+            }
+            catch (System.OperationCanceledException)
+            {
+                // 취소 시 연출 보정 중단
+            }
+            finally
+            {
+                if (m_slideCts != null && m_slideCts.Token == cancellationToken)
+                {
+                    m_slideCts.Dispose();
+                    m_slideCts = null;
+                }
+            }
         }
 
         /// <summary>

@@ -19,20 +19,25 @@ namespace BePex.EventSystem.ViewModelsDebug
         private readonly ITimeProvider m_timeProvider;
         private readonly PlayerRewardModel m_playerReward;
         private readonly CurrencyHUDViewModel m_hudViewModel;
+        private readonly ConditionTypeRegistrySO m_conditionTypeRegistry;
         #endregion
 
         #region 초기화
         /// <summary>
         /// [기능]: 비즈니스 로직 모델, 저장 상태 장치, 시간 제공자, 보상 모델 및 HUD 뷰모델을 주입받는 생성자.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: Type Object 패턴을 위한 ConditionTypeRegistrySO 주입 추가 및 기본값 설정
         /// </summary>
-        public EventDebugViewModel(EventModel eventModel, ISaveSystem saveSystem, ITimeProvider timeProvider, PlayerRewardModel playerReward, CurrencyHUDViewModel hudViewModel)
+        public EventDebugViewModel(EventModel eventModel, ISaveSystem saveSystem, ITimeProvider timeProvider, PlayerRewardModel playerReward, CurrencyHUDViewModel hudViewModel, ConditionTypeRegistrySO conditionTypeRegistry = null)
         {
             m_eventModel = eventModel;
             m_saveSystem = saveSystem;
             m_timeProvider = timeProvider;
             m_playerReward = playerReward;
             m_hudViewModel = hudViewModel;
+            m_conditionTypeRegistry = conditionTypeRegistry;
         }
         #endregion
 
@@ -119,13 +124,26 @@ namespace BePex.EventSystem.ViewModelsDebug
         /// <summary>
         /// [기능]: 시스템에 등록된 모든 조건/행동 타입의 이름 목록을 반환합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: OCP 기반 동적 UI 생성을 위한 조회 메서드 추가
+        /// [수정 내용]: Type Object 레지스트리를 통한 동적 타입 이름 조회 적용
         /// </summary>
         public string[] GetAvailableActionTypes()
         {
-            return System.Enum.GetNames(typeof(BePex.EventSystem.Data.ConditionDefinitionSO.ConditionType));
+            if (m_conditionTypeRegistry != null && m_conditionTypeRegistry.ConditionTypes != null)
+            {
+                var types = m_conditionTypeRegistry.ConditionTypes;
+                var validNames = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < types.Count; i++)
+                {
+                    if (types[i] != null && !string.IsNullOrEmpty(types[i].TypeName))
+                    {
+                        validNames.Add(types[i].TypeName);
+                    }
+                }
+                return validNames.ToArray();
+            }
+            return System.Array.Empty<string>();
         }
 
         /// <summary>
@@ -211,7 +229,7 @@ namespace BePex.EventSystem.ViewModelsDebug
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.Point, amount);
+                m_playerReward.TrySpendCurrency("Point", amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {
@@ -231,7 +249,7 @@ namespace BePex.EventSystem.ViewModelsDebug
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.SeasonPoint, amount);
+                m_playerReward.TrySpendCurrency("SeasonPoint", amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {
@@ -251,7 +269,7 @@ namespace BePex.EventSystem.ViewModelsDebug
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.TrySpendCurrency(RewardDefinitionSO.RewardType.CreditReword, amount);
+                m_playerReward.TrySpendCurrency("CreditReword", amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {

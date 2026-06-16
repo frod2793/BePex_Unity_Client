@@ -8,7 +8,7 @@ namespace BePex.EventSystem.Conditions
     /// [기능]: 스테이지 클리어 횟수를 퀘스트 완료 조건으로 달성하였는지 판정하는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestCondition(ConditionDefinitionSO.ConditionType.StageClear)]
+    [QuestCondition("StageClear")]
     public class StageClearQuestCondition : BaseQuestCondition
     {
         #region 초기화

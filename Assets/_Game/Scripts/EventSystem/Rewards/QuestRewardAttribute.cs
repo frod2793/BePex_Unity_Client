@@ -10,18 +10,18 @@ namespace BePex.EventSystem.Rewards
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
     public class QuestRewardAttribute : Attribute
     {
-        public RewardDefinitionSO.RewardType Type { get; }
+        public string TypeName { get; }
 
         /// <summary>
-        /// [기능]: 퀘스트 보상 타입을 지정하여 어트리뷰트를 생성합니다.
+        /// [기능]: 퀘스트 보상 타입 이름을 지정하여 어트리뷰트를 생성합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Quest-related 네이밍 적용
+        /// [수정 내용]: Enum에서 문자열 식별자 타입명으로 변경
         /// </summary>
-        public QuestRewardAttribute(RewardDefinitionSO.RewardType type)
+        public QuestRewardAttribute(string typeName)
         {
-            Type = type;
+            TypeName = typeName;
         }
     }
 }

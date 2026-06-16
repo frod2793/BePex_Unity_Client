@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Data;
-using BePex.EventSystem.Utils;
 using BePex.EventSystem.Factories;
 using System;
 
@@ -106,19 +105,33 @@ namespace BePex.EventSystem.Views
                 m_viewModel.OnUploadCompleted += func_OnUploadCompleted;
             }
 
-            if (m_condTypeDropdown != null)
+            if (m_condTypeDropdown != null && m_viewModel != null)
             {
                 m_condTypeDropdown.onValueChanged.RemoveAllListeners();
                 m_condTypeDropdown.ClearOptions();
-                var options = EnumDisplayHelper.GetDisplayNames<ConditionDefinitionSO.ConditionType>();
+                
+                var condTypes = m_viewModel.GetAvailableConditionTypes();
+                var options = new List<string>();
+                for (int i = 0; i < condTypes.Count; i++)
+                {
+                    options.Add(condTypes[i].DisplayName);
+                }
                 m_condTypeDropdown.AddOptions(options);
             }
 
-            if (m_newRewardTypeDropdown != null)
+            if (m_newRewardTypeDropdown != null && m_viewModel != null)
             {
                 m_newRewardTypeDropdown.onValueChanged.RemoveAllListeners();
                 m_newRewardTypeDropdown.ClearOptions();
-                var options = EnumDisplayHelper.GetDisplayNames<RewardDefinitionSO.RewardType>();
+                var rewardTypes = m_viewModel.GetAvailableRewardTypes();
+                var options = new List<string>();
+                for (int i = 0; i < rewardTypes.Count; i++)
+                {
+                    if (rewardTypes[i] != null)
+                    {
+                        options.Add(rewardTypes[i].DisplayName);
+                    }
+                }
                 m_newRewardTypeDropdown.AddOptions(options);
             }
 
@@ -406,21 +419,31 @@ namespace BePex.EventSystem.Views
             if (m_questTitleInput != null) m_questTitleInput.text = selectedQuest.questTitle;
             if (m_questDescInput != null) m_questDescInput.text = selectedQuest.questDescription;
 
-            if (m_condTypeDropdown != null)
+            if (m_condTypeDropdown != null && m_viewModel != null)
             {
                 int condIdx = 0;
-                string searchName = selectedQuest.condition.conditionType;
-                if (Enum.TryParse<ConditionDefinitionSO.ConditionType>(selectedQuest.condition.conditionType, true, out var typeEnum))
+                string searchTypeName = selectedQuest.condition.conditionType;
+                var condTypes = m_viewModel.GetAvailableConditionTypes();
+                
+                string searchDisplayName = string.Empty;
+                for (int i = 0; i < condTypes.Count; i++)
                 {
-                    searchName = EnumDisplayHelper.GetDisplayName(typeEnum);
+                    if (condTypes[i].TypeName.Equals(searchTypeName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        searchDisplayName = condTypes[i].DisplayName;
+                        break;
+                    }
                 }
 
-                for (int i = 0; i < m_condTypeDropdown.options.Count; i++)
+                if (!string.IsNullOrEmpty(searchDisplayName))
                 {
-                    if (m_condTypeDropdown.options[i].text.Equals(searchName, StringComparison.OrdinalIgnoreCase))
+                    for (int i = 0; i < m_condTypeDropdown.options.Count; i++)
                     {
-                        condIdx = i;
-                        break;
+                        if (m_condTypeDropdown.options[i].text.Equals(searchDisplayName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            condIdx = i;
+                            break;
+                        }
                     }
                 }
                 m_condTypeDropdown.value = condIdx;
@@ -457,7 +480,7 @@ namespace BePex.EventSystem.Views
                 EventAdminRewardRowView rowView = Instantiate(m_rewardRowPrefab, m_rewardListContent);
                 if (rowView != null)
                 {
-                    rowView.Bind(rew, func_OnRemoveRewardRow);
+                    rowView.Bind(rew, func_OnRemoveRewardRow, m_viewModel.GetAvailableRewardTypes());
                     m_spawnedRewardRows.Add(rowView);
                 }
             }
@@ -599,8 +622,14 @@ namespace BePex.EventSystem.Views
                 string rawType = "Exp";
                 if (m_newRewardTypeDropdown != null)
                 {
-                    string displayName = m_newRewardTypeDropdown.options[m_newRewardTypeDropdown.value].text;
-                    rawType = EnumDisplayHelper.GetEnumValue<RewardDefinitionSO.RewardType>(displayName).ToString();
+                    var rewardTypes = m_viewModel.GetAvailableRewardTypes();
+                    if (m_newRewardTypeDropdown.value >= 0 && m_newRewardTypeDropdown.value < rewardTypes.Count)
+                    {
+                        if (rewardTypes[m_newRewardTypeDropdown.value] != null)
+                        {
+                            rawType = rewardTypes[m_newRewardTypeDropdown.value].TypeName;
+                        }
+                    }
                 }
 
                 int amount = 10;
@@ -779,8 +808,10 @@ namespace BePex.EventSystem.Views
                 questDescription = m_questDescInput != null ? m_questDescInput.text : selectedQuest.questDescription,
                 condition = new ConditionDefinitionDTO
                 {
-                    conditionType = m_condTypeDropdown != null 
-                        ? EnumDisplayHelper.GetEnumValue<ConditionDefinitionSO.ConditionType>(m_condTypeDropdown.options[m_condTypeDropdown.value].text).ToString() 
+                    conditionType = (m_condTypeDropdown != null && m_viewModel != null)
+                        ? (m_condTypeDropdown.value >= 0 && m_condTypeDropdown.value < m_viewModel.GetAvailableConditionTypes().Count 
+                            ? m_viewModel.GetAvailableConditionTypes()[m_condTypeDropdown.value].TypeName 
+                            : selectedQuest.condition.conditionType)
                         : selectedQuest.condition.conditionType,
                     targetValue = m_condTargetInput != null ? (int.TryParse(m_condTargetInput.text, out int target) ? target : 0) : selectedQuest.condition.targetValue
                 },

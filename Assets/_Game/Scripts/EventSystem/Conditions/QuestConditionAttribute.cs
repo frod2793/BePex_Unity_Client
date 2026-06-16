@@ -1,5 +1,4 @@
 using System;
-using BePex.EventSystem.Data;
 
 namespace BePex.EventSystem.Conditions
 {
@@ -10,18 +9,18 @@ namespace BePex.EventSystem.Conditions
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
     public class QuestConditionAttribute : Attribute
     {
-        public ConditionDefinitionSO.ConditionType Type { get; }
+        public string TypeName { get; }
 
         /// <summary>
         /// [기능]: 퀘스트 조건 타입을 지정하여 어트리뷰트를 생성합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Quest-related 네이밍 적용
+        /// [수정 내용]: Type Object 패턴에 맞춰 문자열 기반 조건 식별자 매핑으로 전환
         /// </summary>
-        public QuestConditionAttribute(ConditionDefinitionSO.ConditionType type)
+        public QuestConditionAttribute(string typeName)
         {
-            Type = type;
+            TypeName = typeName;
         }
     }
 }

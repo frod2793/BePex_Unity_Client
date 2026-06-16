@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Interfaces;
+using BePex.EventSystem.Data;
 
 namespace BePex.EventSystem.ViewModels
 {
@@ -28,19 +29,23 @@ namespace BePex.EventSystem.ViewModels
         private string m_selectedEventId;
         private string m_selectedQuestId;
         private readonly IFirebaseUploadService m_firebaseService;
+        private readonly ConditionTypeRegistrySO m_conditionTypeRegistry;
+        private readonly RewardTypeRegistrySO m_rewardTypeRegistry;
         #endregion
 
         #region 초기화
         /// <summary>
-        /// [기능]: Firebase 업로드 서비스 의존성을 주입받아 초기화합니다.
+        /// [기능]: Firebase 업로드 서비스, 조건 타입 레지스트리 및 보상 타입 레지스트리 의존성을 주입받아 초기화합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 생성
+        /// [수정 내용]: Type Object 패턴을 위한 RewardTypeRegistrySO 주입 추가 및 기본값 설정
         /// </summary>
-        public EventAdminViewModel(IFirebaseUploadService firebaseService)
+        public EventAdminViewModel(IFirebaseUploadService firebaseService, ConditionTypeRegistrySO conditionTypeRegistry = null, RewardTypeRegistrySO rewardTypeRegistry = null)
         {
             m_firebaseService = firebaseService;
+            m_conditionTypeRegistry = conditionTypeRegistry;
+            m_rewardTypeRegistry = rewardTypeRegistry;
             m_eventTable = new EventTableDTO();
             m_selectedEventId = string.Empty;
             m_selectedQuestId = string.Empty;
@@ -48,6 +53,56 @@ namespace BePex.EventSystem.ViewModels
         #endregion
 
         #region 공개 메서드
+        /// <summary>
+        /// [기능]: 레지스트리에 등록된 사용 가능한 조건 타입 목록을 조회합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        public IReadOnlyList<ConditionTypeSO> GetAvailableConditionTypes()
+        {
+            if (m_conditionTypeRegistry != null && m_conditionTypeRegistry.ConditionTypes != null)
+            {
+                var rawList = m_conditionTypeRegistry.ConditionTypes;
+                var filtered = new List<ConditionTypeSO>();
+                for (int i = 0; i < rawList.Count; i++)
+                {
+                    if (rawList[i] != null)
+                    {
+                        filtered.Add(rawList[i]);
+                    }
+                }
+                return filtered;
+            }
+            return Array.Empty<ConditionTypeSO>();
+        }
+
+        /// <summary>
+        /// [기능]: 레지스트리에 등록된 사용 가능한 보상 타입 목록을 조회합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        public IReadOnlyList<RewardTypeSO> GetAvailableRewardTypes()
+        {
+            if (m_rewardTypeRegistry != null && m_rewardTypeRegistry.RewardTypes != null)
+            {
+                var rawList = m_rewardTypeRegistry.RewardTypes;
+                var filtered = new List<RewardTypeSO>();
+                for (int i = 0; i < rawList.Count; i++)
+                {
+                    if (rawList[i] != null)
+                    {
+                        filtered.Add(rawList[i]);
+                    }
+                }
+                return filtered;
+            }
+            return Array.Empty<RewardTypeSO>();
+        }
+
         /// <summary>
         /// [기능]: 뷰모델에 관리 대상이 될 DTO 테이블 정보를 설정하고 목록 갱신 이벤트를 노출합니다.
         /// [작성자]: 윤승종

@@ -48,50 +48,51 @@ namespace BePex.EventSystem.Models
 
         #region 공개 메서드
         /// <summary>
-        /// [기능]: 안전하게 지정한 보상 타입의 자산을 증가시킵니다.
+        /// [기능]: 안전하게 지정한 보상 타입(문자열 식별자)의 자산을 증가시킵니다.
         /// [작성자]: 윤승종
         /// </summary>
-        public void AddCurrency(RewardDefinitionSO.RewardType type, int amount)
+        public void AddCurrency(string typeName, int amount)
         {
             if (amount <= 0)
             {
                 return;
             }
 
-            switch (type)
+            switch (typeName)
             {
-                case RewardDefinitionSO.RewardType.Exp:
+                case "Exp":
                     m_totalExp += amount;
                     break;
-                case RewardDefinitionSO.RewardType.Ticket:
+                case "Ticket":
                     m_totalTickets += amount;
                     break;
-                case RewardDefinitionSO.RewardType.Point:
+                case "Point":
                     m_totalPoints += amount;
                     break;
-                case RewardDefinitionSO.RewardType.SeasonPoint:
+                case "SeasonPoint":
                     m_totalSeasonPoints += amount;
                     break;
-                case RewardDefinitionSO.RewardType.CreditReword:
+                case "CreditReword":
+                case "Credit":
                     m_totalCredits += amount;
                     break;
             }
         }
 
         /// <summary>
-        /// [기능]: 안전하게 지정한 보상 타입의 자산을 차감합니다. (음수 방지 안전 가드 내재)
+        /// [기능]: 안전하게 지정한 보상 타입(문자열 식별자)의 자산을 차감합니다. (음수 방지 안전 가드 내재)
         /// [작성자]: 윤승종
         /// </summary>
-        public bool TrySpendCurrency(RewardDefinitionSO.RewardType type, int amount)
+        public bool TrySpendCurrency(string typeName, int amount)
         {
             if (amount <= 0)
             {
                 return false;
             }
 
-            switch (type)
+            switch (typeName)
             {
-                case RewardDefinitionSO.RewardType.Point:
+                case "Point":
                     if (m_totalPoints < amount)
                     {
                         return false;
@@ -99,7 +100,7 @@ namespace BePex.EventSystem.Models
                     m_totalPoints -= amount;
                     return true;
 
-                case RewardDefinitionSO.RewardType.SeasonPoint:
+                case "SeasonPoint":
                     if (m_totalSeasonPoints < amount)
                     {
                         return false;
@@ -107,7 +108,8 @@ namespace BePex.EventSystem.Models
                     m_totalSeasonPoints -= amount;
                     return true;
 
-                case RewardDefinitionSO.RewardType.CreditReword:
+                case "CreditReword":
+                case "Credit":
                     if (m_totalCredits < amount)
                     {
                         return false;

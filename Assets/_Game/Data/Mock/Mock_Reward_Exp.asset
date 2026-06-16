@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95a414dba99d44b389e3b3ae122181ef, type: 3}
   m_Name: Mock_Reward_Exp
   m_EditorClassIdentifier: Assembly-CSharp::BePex.EventSystem.Data.RewardDefinitionSO
-  m_rewardType: 0
+  m_rewardType: {fileID: 11400000, guid: 48141eb633ba44c2aa5c4a3ff4a40fd5, type: 2}
   m_amount: 100
   m_displayName: "\uACBD\uD5D8\uCE58"
   m_icon: {fileID: 0}

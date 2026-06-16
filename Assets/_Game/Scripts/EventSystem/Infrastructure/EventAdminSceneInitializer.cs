@@ -2,6 +2,7 @@ using UnityEngine;
 using BePex.EventSystem.Views;
 using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.DTOs;
+using BePex.EventSystem.Data;
 using UnityEngine.AddressableAssets;
 using System.IO;
 
@@ -15,6 +16,8 @@ namespace BePex.EventSystem.Infrastructure
     {
         #region UI 참조 (Inspector)
         [SerializeField] private EventAdminView m_adminView;
+        [SerializeField] private ConditionTypeRegistrySO m_conditionTypeRegistry;
+        [SerializeField] private RewardTypeRegistrySO m_rewardTypeRegistry;
         #endregion
 
         #region 데이터 참조 (Inspector)
@@ -86,7 +89,7 @@ namespace BePex.EventSystem.Infrastructure
             }
 
             var firebaseService = new MockFirebaseUploadService();
-            var adminVM = new EventAdminViewModel(firebaseService);
+            var adminVM = new EventAdminViewModel(firebaseService, m_conditionTypeRegistry, m_rewardTypeRegistry);
             adminVM.SetEventTable(eventTableDTO);
 
             if (m_adminView != null)

@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b08e6dc7648b34205a855afd3f567a38, type: 3}
   m_Name: Mock_Condition_KillCount
   m_EditorClassIdentifier: Assembly-CSharp::BePex.EventSystem.Data.ConditionDefinitionSO
-  m_conditionType: 0
+  m_conditionType: {fileID: 11400000, guid: 313a749244a3c407f9af416eb9d03fa7, type: 2}
   m_targetValue: 5

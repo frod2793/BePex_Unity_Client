@@ -5061,6 +5061,7 @@ MonoBehaviour:
   m_currencyHUDView: {fileID: 1111461236}
   m_debugView: {fileID: 774632922}
   m_useDebugMode: 1
+  m_conditionTypeRegistry: {fileID: 11400000, guid: fbfc8cbf793134149a8b23787de34f1a, type: 2}
   m_eventJsonAddress: EventTableJson
 --- !u!4 &1388271414
 Transform:

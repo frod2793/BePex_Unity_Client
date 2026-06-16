@@ -7,7 +7,7 @@ namespace BePex.EventSystem.Rewards
     /// [기능]: 플레이어 자산에 퀘스트 상점 등에서 쓸 포인트 보상을 적립해 주는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestReward(RewardDefinitionSO.RewardType.Point)]
+    [QuestReward("Point")]
     public class PointQuestReward : BaseQuestReward
     {
         #region 초기화
@@ -36,7 +36,7 @@ namespace BePex.EventSystem.Rewards
         {
             if (playerReward != null)
             {
-                playerReward.AddCurrency(RewardDefinitionSO.RewardType.Point, m_amount);
+                playerReward.AddCurrency("Point", m_amount);
             }
         }
         #endregion

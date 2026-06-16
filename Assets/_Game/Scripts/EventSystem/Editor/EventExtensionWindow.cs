@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using BePex.EventSystem.Data;
 
 namespace BePex.EventSystem.Editor
 {
@@ -74,9 +75,9 @@ namespace BePex.EventSystem.Editor
         /// <summary>
         /// [기능]: 사용자가 입력한 필드 값을 검증한 뒤, 해당 SO의 Enum 파일 주입 및 C# 템플릿 파일 생성을 수행합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: Type Object 패턴에 맞춰 조건/보상 생성 프로세스 분리
         /// </summary>
         private void func_ExecuteExtension()
         {
@@ -86,7 +87,7 @@ namespace BePex.EventSystem.Editor
                 return;
             }
 
-            if (!Regex.IsMatch(m_typeName, "^[A-Z][a-zA-Z0-9_]*$"))
+            if (!System.Text.RegularExpressions.Regex.IsMatch(m_typeName, "^[A-Z][a-zA-Z0-9_]*$"))
             {
                 EditorUtility.DisplayDialog("경고", "식별자 영문명은 영문 대문자로 시작하는 영숫자 형식이어야 합니다.", "확인");
                 return;
@@ -94,14 +95,14 @@ namespace BePex.EventSystem.Editor
 
             if (m_extensionType == ExtensionType.Condition)
             {
-                if (func_TryRegisterEnum("ConditionDefinitionSO", "ConditionType", m_typeName, m_displayName))
+                if (func_CreateConditionTypeAsset(m_typeName, m_displayName))
                 {
                     func_CreateConditionClass(m_typeName, m_displayName);
                 }
             }
             else
             {
-                if (func_TryRegisterEnum("RewardDefinitionSO", "RewardType", m_typeName, m_displayName))
+                if (func_CreateRewardTypeAsset(m_typeName, m_displayName))
                 {
                     func_CreateRewardClass(m_typeName, m_displayName);
                 }
@@ -111,68 +112,138 @@ namespace BePex.EventSystem.Editor
         }
 
         /// <summary>
-        /// [기능]: 대상 ScriptableObject 스크립트 파일을 찾아 지정한 Enum에 새 원소를 삽입합니다.
+        /// [기능]: 신규 조건 타입 SO 에셋을 생성하고 레지스트리 파일에 동적으로 등록합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-15
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 최초 정의
         /// </summary>
-        private bool func_TryRegisterEnum(string filename, string enumName, string typeName, string displayName)
+        private bool func_CreateConditionTypeAsset(string typeName, string displayName)
         {
-            string[] guids = AssetDatabase.FindAssets($"{filename} t:MonoScript");
-            if (guids.Length == 0)
+            string folderPath = "Assets/_Game/Data/ConditionTypes";
+            if (!AssetDatabase.IsValidFolder(folderPath))
             {
-                Debug.LogError($"[EventExtensionWindow] {filename}.cs 파일을 프로젝트 내에서 찾을 수 없습니다.");
-                EditorUtility.DisplayDialog("오류", $"{filename}.cs 파일을 찾을 수 없습니다.", "확인");
-                return false;
+                if (!AssetDatabase.IsValidFolder("Assets/_Game/Data"))
+                {
+                    if (!AssetDatabase.IsValidFolder("Assets/_Game"))
+                    {
+                        AssetDatabase.CreateFolder("Assets", "_Game");
+                    }
+                    AssetDatabase.CreateFolder("Assets/_Game", "Data");
+                }
+                AssetDatabase.CreateFolder("Assets/_Game/Data", "ConditionTypes");
             }
 
-            string filePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, filePath);
+            string assetPath = $"{folderPath}/{typeName}.asset";
+            ConditionTypeSO existAsset = AssetDatabase.LoadAssetAtPath<ConditionTypeSO>(assetPath);
 
-            if (!File.Exists(fullPath))
+            if (existAsset != null)
             {
-                Debug.LogError($"[EventExtensionWindow] 파일 경로를 찾을 수 없습니다: {fullPath}");
-                return false;
+                Debug.LogWarning($"[EventExtensionWindow] 이미 {typeName}.asset 에셋이 존재합니다. 레지스트리 등록 및 클래스 생성만 수행합니다.");
+            }
+            else
+            {
+                existAsset = CreateInstance<ConditionTypeSO>();
+
+                var typeField = typeof(ConditionTypeSO).GetField("m_typeName", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var displayField = typeof(ConditionTypeSO).GetField("m_displayName", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (typeField != null)
+                {
+                    typeField.SetValue(existAsset, typeName);
+                }
+                if (displayField != null)
+                {
+                    displayField.SetValue(existAsset, displayName);
+                }
+
+                AssetDatabase.CreateAsset(existAsset, assetPath);
+                Debug.Log($"[EventExtensionWindow] 신규 조건 타입 에셋 생성 완료: {assetPath}");
             }
 
-            string fileContent = File.ReadAllText(fullPath);
-            string enumPattern = $@"public enum {enumName}\s*\{{([\s\S]*?)\}}";
-            Match match = Regex.Match(fileContent, enumPattern);
+            string registryPath = "Assets/_Game/Data/ConditionTypeRegistry.asset";
+            ConditionTypeRegistrySO registry = AssetDatabase.LoadAssetAtPath<ConditionTypeRegistrySO>(registryPath);
 
-            if (!match.Success)
+            if (registry == null)
             {
-                Debug.LogError($"[EventExtensionWindow] {filename}.cs 파일에서 {enumName} 정의를 찾을 수 없습니다.");
-                return false;
+                registry = CreateInstance<ConditionTypeRegistrySO>();
+                AssetDatabase.CreateAsset(registry, registryPath);
+                Debug.Log($"[EventExtensionWindow] 신규 ConditionTypeRegistry 에셋 생성 완료: {registryPath}");
             }
 
-            string enumBody = match.Groups[1].Value;
-            string trimmedBody = enumBody.TrimEnd();
+            registry.Register(existAsset);
+            EditorUtility.SetDirty(registry);
+            AssetDatabase.SaveAssets();
 
-            if (trimmedBody.Contains(typeName))
+            Debug.Log($"[EventExtensionWindow] ConditionTypeRegistry에 '{typeName}' 에셋이 등록되었습니다.");
+            return true;
+        }
+
+        /// <summary>
+        /// [기능]: 신규 보상 타입 SO 에셋을 생성하고 레지스트리 파일에 동적으로 등록합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        private bool func_CreateRewardTypeAsset(string typeName, string displayName)
+        {
+            string folderPath = "Assets/_Game/Data/RewardTypes";
+            if (!AssetDatabase.IsValidFolder(folderPath))
             {
-                Debug.LogWarning($"[EventExtensionWindow] 이미 {typeName} 원소가 {enumName} 에 존재합니다. 클래스 생성만 시도합니다.");
-                return true;
+                if (!AssetDatabase.IsValidFolder("Assets/_Game/Data"))
+                {
+                    if (!AssetDatabase.IsValidFolder("Assets/_Game"))
+                    {
+                        AssetDatabase.CreateFolder("Assets", "_Game");
+                    }
+                    AssetDatabase.CreateFolder("Assets/_Game", "Data");
+                }
+                AssetDatabase.CreateFolder("Assets/_Game/Data", "RewardTypes");
             }
 
-            string separator = string.Empty;
-            if (!trimmedBody.EndsWith(","))
+            string assetPath = $"{folderPath}/{typeName}.asset";
+            RewardTypeSO existAsset = AssetDatabase.LoadAssetAtPath<RewardTypeSO>(assetPath);
+
+            if (existAsset != null)
             {
-                separator = ",";
+                Debug.LogWarning($"[EventExtensionWindow] 이미 {typeName}.asset 에셋이 존재합니다. 레지스트리 등록 및 클래스 생성만 수행합니다.");
+            }
+            else
+            {
+                existAsset = CreateInstance<RewardTypeSO>();
+
+                var typeField = typeof(RewardTypeSO).GetField("m_typeName", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var displayField = typeof(RewardTypeSO).GetField("m_displayName", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (typeField != null)
+                {
+                    typeField.SetValue(existAsset, typeName);
+                }
+                if (displayField != null)
+                {
+                    displayField.SetValue(existAsset, displayName);
+                }
+
+                AssetDatabase.CreateAsset(existAsset, assetPath);
+                Debug.Log($"[EventExtensionWindow] 신규 보상 타입 에셋 생성 완료: {assetPath}");
             }
 
-            string newElement = $"{separator}\n            [EventDisplayName(\"{displayName}\")]\n            {typeName}\n        ";
-            int insertPos = enumBody.LastIndexOf(trimmedBody) + trimmedBody.Length;
-            string newEnumBody = enumBody.Insert(insertPos, newElement);
+            string registryPath = "Assets/_Game/Data/RewardTypeRegistry.asset";
+            RewardTypeRegistrySO registry = AssetDatabase.LoadAssetAtPath<RewardTypeRegistrySO>(registryPath);
 
-            string originalEnumBlock = match.Value;
-            string newEnumBlock = $"public enum {enumName}\n        {{{newEnumBody}}}";
-            
-            // 본문 치환 후 파일 저장
-            fileContent = fileContent.Replace(originalEnumBlock, newEnumBlock);
-            File.WriteAllText(fullPath, fileContent);
+            if (registry == null)
+            {
+                registry = CreateInstance<RewardTypeRegistrySO>();
+                AssetDatabase.CreateAsset(registry, registryPath);
+                Debug.Log($"[EventExtensionWindow] 신규 RewardTypeRegistry 에셋 생성 완료: {registryPath}");
+            }
 
-            Debug.Log($"[EventExtensionWindow] {filename}.cs의 {enumName}에 '{typeName}({displayName})'이(가) 추가되었습니다.");
+            registry.Register(existAsset);
+            EditorUtility.SetDirty(registry);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log($"[EventExtensionWindow] RewardTypeRegistry에 '{typeName}' 에셋이 등록되었습니다.");
             return true;
         }
 
@@ -181,7 +252,7 @@ namespace BePex.EventSystem.Editor
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: BaseQuestCondition 및 [QuestCondition] 어트리뷰트, 5인자 생성자 구조로 변경
+        /// [수정 내용]: Type Object 패턴에 맞춰 속성 인자가 이넘 대신 문자열 상수로 지정하도록 변경
         /// </summary>
         private void func_CreateConditionClass(string typeName, string displayName)
         {
@@ -210,7 +281,7 @@ namespace BePex.EventSystem.Conditions
     /// [기능]: {displayName}을 이벤트 완료 조건으로 달성하였는지 판정하는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestCondition(ConditionDefinitionSO.ConditionType.{typeName})]
+    [QuestCondition(""{typeName}"")]
     public class {className} : BaseQuestCondition
     {{
         #region 초기화
@@ -280,7 +351,7 @@ namespace BePex.EventSystem.Rewards
     /// [기능]: 플레이어 자산에 이벤트 완료 보상으로 {displayName}을 부여해 주는 Strategy 클래스.
     /// [작성자]: 윤승종
     /// </summary>
-    [QuestReward(RewardDefinitionSO.RewardType.{typeName})]
+    [QuestReward(""{typeName}"")]
     public class {className} : BaseQuestReward
     {{
         #region 초기화
@@ -309,8 +380,7 @@ namespace BePex.EventSystem.Rewards
         {{
             if (playerReward != null)
             {{
-                // TODO: 플레이어 자산 모델에 {displayName} 지급하는 비즈니스 로직 작성 필요
-                // 예: playerReward.AddCurrency(RewardDefinitionSO.RewardType.{typeName}, m_amount);
+                playerReward.AddCurrency(""{typeName}"", m_amount);
             }}
         }}
         #endregion

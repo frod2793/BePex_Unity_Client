@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="4" result="Passed" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.076524">
+  <test-suite type="TestSuite" id="1015" name="A_Test1" fullname="A_Test1" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.076524" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1007" name="PlayModeTests.dll" fullname="/Users/woodenshield/Desktop/UNITY/Project/BePex_Unity_Client/Library/ScriptAssemblies/PlayModeTests.dll" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.072060" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="16558" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1008" name="BePex" fullname="BePex" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.071540" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1009" name="EventSystem" fullname="BePex.EventSystem" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.071210" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1010" name="Tests" fullname="BePex.EventSystem.Tests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.070928" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestSuite" id="1011" name="PlayMode" fullname="BePex.EventSystem.Tests.PlayMode" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.070683" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-suite type="TestFixture" id="1001" name="EventIntegrationTests" fullname="BePex.EventSystem.Tests.PlayMode.EventIntegrationTests" classname="BePex.EventSystem.Tests.PlayMode.EventIntegrationTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.053392" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+                <properties />
+                <test-case id="1002" name="Test_Nine_Core_Features_Integrative_Flow" fullname="BePex.EventSystem.Tests.PlayMode.EventIntegrationTests.Test_Nine_Core_Features_Integrative_Flow" methodname="Test_Nine_Core_Features_Integrative_Flow" classname="BePex.EventSystem.Tests.PlayMode.EventIntegrationTests" runstate="Runnable" seed="507973432" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.045729" asserts="0">
+                  <properties>
+                    <property name="_JOINTYPE" value="UnityCombinatorial" />
+                    <property name="retryIteration" value="0" />
+                    <property name="repeatIteration" value="0" />
+                  </properties>
+                  <output><![CDATA[[EventIntegrationTests] ======= [1단계: 이벤트 목록 표시 및 진행도 표시 검증] =======
+[EventIntegrationTests] 1단계 완료: 목록 및 진척도 데이터 바인딩 확인 완료.
+[EventIntegrationTests] ======= [2단계: 이벤트 조건 달성 및 완료 처리 검증] =======
+[EventIntegrationTests] 2단계 완료: 조건 가산 및 클리어 완료 판정 확인 완료.
+[EventIntegrationTests] ======= [3단계: 보상 수령 처리 및 이벤트 포인트 획득 검증] =======
+[EventIntegrationTests] 3단계 완료: 보상 갱신 및 포인트 획득 처리 확인 완료.
+[EventIntegrationTests] ======= [4단계: 이미 수령한 보상 중복 수령 방지 검증] =======
+[EventIntegrationTests] 4단계 완료: 이미 수령한 보상에 대한 중복 청구 차단 확인 완료.
+[EventIntegrationTests] ======= [5단계: 이벤트 포인트 사용(교환) 검증] =======
+[EventIntegrationTests] 5단계 완료: SimulateSpendPointsAsync를 통한 재화 차감 및 HUD 갱신 확인 완료.
+[EventIntegrationTests] ======= [6단계: 진행도 저장 및 로드 데이터 복구 검증] =======
+[EventIntegrationTests] 6단계 완료: ISaveSystem에 의한 비동기 영속화 데이터 복원 무결성 확인 완료.
+]]></output>
+                </test-case>
+              </test-suite>
+              <test-suite type="TestFixture" id="1003" name="EventUIViewTests" fullname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests" classname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.016456" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+                <properties />
+                <test-case id="1005" name="Test_UI_DetailView_Update" fullname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests.Test_UI_DetailView_Update" methodname="Test_UI_DetailView_Update" classname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests" runstate="Runnable" seed="1569347566" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.007921" asserts="0">
+                  <properties>
+                    <property name="_JOINTYPE" value="UnityCombinatorial" />
+                    <property name="retryIteration" value="0" />
+                    <property name="repeatIteration" value="0" />
+                  </properties>
+                  <output><![CDATA[[EventUIViewTests] Field Init - prefabField null? False, containerField null? False
+[EventUIViewTests] Field Value - m_cellPrefab: MockCellPrefab (UnityEngine.GameObject), m_cellContainer: MockContainer (UnityEngine.Transform)
+[EventUIViewTests] [Test_UI_DetailView_Update] 입력값: evt_ui_test 선택 명령 | 출력값: DetailVM의 활성 이벤트 ID=evt_ui_test
+]]></output>
+                </test-case>
+                <test-case id="1004" name="Test_UI_ListView_Binding" fullname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests.Test_UI_ListView_Binding" methodname="Test_UI_ListView_Binding" classname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests" runstate="Runnable" seed="1932111467" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.003284" asserts="0">
+                  <properties>
+                    <property name="_JOINTYPE" value="UnityCombinatorial" />
+                    <property name="retryIteration" value="0" />
+                    <property name="repeatIteration" value="0" />
+                  </properties>
+                  <output><![CDATA[[EventUIViewTests] Field Init - prefabField null? False, containerField null? False
+[EventUIViewTests] Field Value - m_cellPrefab: MockCellPrefab (UnityEngine.GameObject), m_cellContainer: MockContainer (UnityEngine.Transform)
+[EventUIViewTests] [Test_UI_ListView_Binding] 입력값: 1개의 이벤트를 가진 ListVM 바인딩 | 출력값: 생성된 EventItemCell 개수=1
+]]></output>
+                </test-case>
+                <test-case id="1006" name="Test_UI_RewardClaim_Simulation" fullname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests.Test_UI_RewardClaim_Simulation" methodname="Test_UI_RewardClaim_Simulation" classname="BePex.EventSystem.Tests.PlayMode.EventUIViewTests" runstate="Runnable" seed="1542816871" result="Passed" start-time="2026-06-15 06:15:43Z" end-time="2026-06-15 06:15:43Z" duration="0.004110" asserts="0">
+                  <properties>
+                    <property name="_JOINTYPE" value="UnityCombinatorial" />
+                    <property name="retryIteration" value="0" />
+                    <property name="repeatIteration" value="0" />
+                  </properties>
+                  <output><![CDATA[[EventUIViewTests] Field Init - prefabField null? False, containerField null? False
+[EventUIViewTests] Field Value - m_cellPrefab: MockCellPrefab (UnityEngine.GameObject), m_cellContainer: MockContainer (UnityEngine.Transform)
+[EventUIViewTests] [Test_UI_RewardClaim_Simulation] 입력값: 조건 달성 후 보상 수령 여부 확인 | 출력값: 수령 가능 상태=True
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: /Users/woodenshield/Library/Application Support/DefaultCompany/A_Test1/TestResults.xml
+]]></output>
+                </test-case>
+              </test-suite>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

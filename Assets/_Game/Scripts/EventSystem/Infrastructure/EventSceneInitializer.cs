@@ -28,6 +28,7 @@ namespace BePex.EventSystem.Infrastructure
         [Header("디버그 뷰 (선택 사항)")]
         [SerializeField] private EventDebugView m_debugView;
         [SerializeField] private bool m_useDebugMode = false;
+        [SerializeField] private ConditionTypeRegistrySO m_conditionTypeRegistry;
         #endregion
 
         #region 데이터 참조 (Inspector)
@@ -127,7 +128,7 @@ namespace BePex.EventSystem.Infrastructure
             // 8단계: [디버그 전용] 디버그 모드가 켜져 있고 조작 뷰가 연결된 경우 바인딩 처리
             if (m_useDebugMode && m_debugView != null)
             {
-                var debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM);
+                var debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM, m_conditionTypeRegistry);
                 m_debugView.Bind(debugVM);
                 m_debugView.gameObject.SetActive(true);
             }

@@ -1,0 +1,1 @@
+.agent/rules/event_system_rules.md

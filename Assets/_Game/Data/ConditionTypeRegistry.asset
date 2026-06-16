@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d9e9557170f54b5395776e676847dde, type: 3}
+  m_Name: ConditionTypeRegistry
+  m_EditorClassIdentifier: BePex.EventSystem::BePex.EventSystem.Data.ConditionTypeRegistrySO
+  m_conditionTypes:
+  - {fileID: 11400000, guid: 313a749244a3c407f9af416eb9d03fa7, type: 2}
+  - {fileID: 11400000, guid: abe31d239d2c4455b9d11f3053313d70, type: 2}
+  - {fileID: 11400000, guid: 01f23ba6e2a964bd59d6c4846429daca, type: 2}
+  - {fileID: 11400000, guid: f3281ef68ac524a7ba3823ecc849fb43, type: 2}
+  - {fileID: 11400000, guid: ae9576f80772447fa8eae927c429ddb9, type: 2}
+  - {fileID: 11400000, guid: 5bb4cb109615d45ac90ceb6410af84ec, type: 2}
+  - {fileID: 11400000, guid: 45db88c6ab7194150adfcfd395de0b62, type: 2}

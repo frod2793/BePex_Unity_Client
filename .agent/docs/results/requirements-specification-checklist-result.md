@@ -85,20 +85,20 @@
 
 ## 6. 확장성 설계 검사표 (Extensibility Design Checklist & Report)
 
-본 프로젝트는 새로운 이벤트 및 보상 타입 추가 시 OCP(Open-Closed Principle)를 엄격히 준수합니다.
+본 프로젝트는 새로운 이벤트 및 보상 타입 추가 시 OCP(Open-Closed Principle)를 엄격히 준수하며, 팩토리 폴백 구조를 통해 C# 클래스 작성 조차 배제할 수 있는 고도화된 데이터 기반(Data-driven) 아키텍처를 가집니다.
 
 ### 6.1 아키텍처 검사 리포트 (Inspection Report)
-- **QuestConditionFactory / QuestRewardFactory 검증 완료**: 두 팩토리 모두 리플렉션(`Assembly.GetExecutingAssembly().GetTypes()`)과 커스텀 어트리뷰트(`[QuestCondition]`, `[QuestReward]`)를 활용하여 런타임에 전략 객체를 자동 매핑하도록 구현되어 있습니다.
+- **QuestConditionFactory / QuestRewardFactory 검증 완료**: 두 팩토리 모두 리플렉션과 커스텀 어트리뷰트(`[QuestCondition]`, `[QuestReward]`)를 활용하여 런타임에 전략 객체를 자동 매핑하며, 매핑 클래스가 탐지되지 않을 시 범용 전략 클래스(`StandardQuestCondition`, `GeneralQuestReward`)로 자동 바인딩(Fallback)합니다.
 - **확장 방식(코드 수정 제로화)**: 
-  - 신규 이벤트(예: 길드, 시즌, 월간, 랭킹, 광고) 추가 시 -> `IQuestCondition` 구현체 생성 후 `[QuestCondition]` 어트리뷰트만 달면 시스템 자동 병합.
-  - 신규 보상(예: 뽑기 티켓, 시즌 포인트, 크레딧) 추가 시 -> `IQuestReward` 구현체 생성 후 `[QuestReward]` 어트리뷰트만 달면 시스템 자동 병합.
+  - 신규 조건/재화 추가 시 -> 에디터 윈도우에서 클래스 생성을 끈 채로 생성하면 C# 스크립트 작성 및 컴파일 없이 데이터 에셋 추가만으로 시스템 편입이 동적으로 완료됩니다.
+  - 복잡한 날짜 비교 등 특수 가드가 필요할 때에만 C# 스크립트를 생성하여 결합하는 유연한 설계를 확립했습니다.
 
 ### 6.2 확장성 규격 검사지
 | 요구사항 분류 | 검증 내용 | 확인 (Pass/Fail) |
 | :--- | :--- | :--- |
-| **새로운 이벤트 타입 확장** | 길드, 시즌, 월간, 랭킹 등 신규 이벤트 추가 시 `QuestConditionFactory` 내의 분기(Switch/If)문 수정이 불필요한가? | [x] |
-| **새로운 보상 타입 확장** | 뽑기 티켓, 시즌 포인트 등 신규 보상 추가 시 `QuestRewardFactory` 내의 분기문 수정이 불필요한가? | [x] |
-| **어트리뷰트 기반 매핑** | 새로운 로직(클래스)이 추가될 때, 순수하게 `[QuestCondition]` 또는 `[QuestReward]` 선언만으로 시스템에 자동 편입되는가? | [x] |
+| **새로운 이벤트 타입 확장** | 길드, 시즌, 로그인 횟수 등 신규 이벤트 추가 시 `QuestConditionFactory` 내의 분기(Switch/If)문 수정이 불필요한가? | [x] |
+| **새로운 보상 타입 확장** | 뽑기 티켓, 시즌 포인트, 루비 등 신규 보상 추가 시 `QuestRewardFactory` 내의 분기문 수정이 불필요한가? | [x] |
+| **어트리뷰트 기반 매핑** | 새로운 구체 로직이 추가될 때, 순수하게 `[QuestCondition]` 또는 `[QuestReward]` 선언만으로 시스템에 자동 편입되는가? | [x] |
 | **OCP (개방-폐쇄 원칙)** | 기능 확장에는 열려 있고 기존 코드(Core, Factories) 수정에는 닫혀 있는 구조가 완벽히 보장되는가? | [x] |
 
 ---
@@ -107,13 +107,14 @@
 
 `Assets/_Game/Scripts/` 이하 전체 스크립트를 대상으로 다중 스캔(Directory, Class, Interface)을 통해 누락 없이 수집 및 검사한 결과입니다.
 
-### 7.1 검사한 스크립트 목록 (총 43개)
+### 7.1 검사한 스크립트 목록 (총 31개)
 - **Model / Data**: `EventModel`, `EventProgressModel`, `PlayerRewardModel`, `SeasonPassModel`, `ConditionDefinitionSO`, `RewardDefinitionSO`, `EventTableSO`, `SeasonPassDefinitionSO` 등
 - **ViewModel**: `EventListViewModel`, `EventDetailViewModel`, `RewardPopupViewModel`, `EventAdminViewModel`, `EventDebugViewModel` 등
 - **View (UI)**: `EventListView`, `EventDetailView`, `RewardPopupView`, `EventItemCell`, `EventAdminQuestRowView`, `EventAdminView`, `EventDebugView` 등
-- **Condition (전략)**: `KillCountQuestCondition`, `StageClearQuestCondition`, `AttendanceQuestCondition`, `GuildQuestCondition`, `MonthQuestCondition`, `RankingQuestCondition`, `ADMobQuestCondition`, `BaseQuestCondition`, `QuestConditionAttribute` 등
-- **Reward (전략)**: `ExpQuestReward`, `TicketQuestReward`, `PointQuestReward`, `SeasonPointQuestReward`, `CreditQuestReward`, `BaseQuestReward`, `QuestRewardAttribute` 등
-- **Infrastructure / Utils**: `QuestConditionFactory`, `QuestRewardFactory`, `JsonSaveSystem`, `InMemorySaveSystem`, `CloudSaveSystem`, `EventSceneInitializer`, `EventAdminSceneInitializer`, `MockFirebaseUploadService`, `EnumDisplayHelper`, `EventDisplayNameAttribute` 등
+- **Condition (전략)**: `StandardQuestCondition`, `AttendanceQuestCondition`, `BaseQuestCondition`, `QuestConditionAttribute` 등
+- **Reward (전략)**: `GeneralQuestReward`, `BaseQuestReward`, `QuestRewardAttribute` 등
+- **Infrastructure / Utils**: `QuestConditionFactory`, `QuestRewardFactory`, `JsonSaveSystem`, `InMemorySaveSystem`, `EventSceneInitializer`, `EventAdminSceneInitializer`, `MockFirebaseUploadService` 등
+- **Editor**: `EventExtensionWindow` 등
 
 ### 7.2 누락된 / 미분류 스크립트 목록
 - **검출 대상**: 명확한 MVVM 레이어나 Strategy 패턴에 속하지 않고 `Assets/_Game/Scripts/` 구석에 방치되었거나 계층을 무시한 스크립트.

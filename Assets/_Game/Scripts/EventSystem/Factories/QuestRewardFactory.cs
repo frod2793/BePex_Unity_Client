@@ -119,8 +119,8 @@ namespace BePex.EventSystem.Factories
                 return (IQuestReward)Activator.CreateInstance(rewardType, amount, displayName);
             }
 
-            Debug.LogError($"[QuestRewardFactory] 매핑되지 않은 보상 타입: {typeName}");
-            return null;
+            // [Fallback] 기획상 지정된 클래스가 없다면 범용 GeneralQuestReward 인스턴스로 자동 대체
+            return new GeneralQuestReward(typeName, amount, displayName);
         }
         #endregion
     }

@@ -107,13 +107,18 @@ namespace BePex.EventSystem.Factories
         /// </summary>
         private IQuestCondition CreateInternal(string typeName, int targetValue, string eventId, string questId)
         {
-            if (typeName != null && m_registry.TryGetValue(typeName, out Type conditionType))
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return null;
+            }
+
+            if (m_registry.TryGetValue(typeName, out Type conditionType))
             {
                 return (IQuestCondition)Activator.CreateInstance(conditionType, targetValue, m_saveSystem, m_timeProvider, eventId, questId);
             }
 
-            Debug.LogError($"[QuestConditionFactory] 매핑되지 않은 조건 타입: {typeName}");
-            return null;
+            // [Fallback] 기획상 지정된 클래스가 없다면 범용 StandardQuestCondition 인스턴스로 자동 대체
+            return new StandardQuestCondition(targetValue, m_saveSystem, m_timeProvider, eventId, questId);
         }
         #endregion
     }

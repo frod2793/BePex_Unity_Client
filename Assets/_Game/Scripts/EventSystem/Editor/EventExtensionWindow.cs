@@ -24,6 +24,7 @@ namespace BePex.EventSystem.Editor
         private ExtensionType m_extensionType = ExtensionType.Condition;
         private string m_typeName = string.Empty;
         private string m_displayName = string.Empty;
+        private bool m_createClassFile = false;
         #endregion
 
         #region 초기화 (Initialization)
@@ -61,6 +62,7 @@ namespace BePex.EventSystem.Editor
             m_extensionType = (ExtensionType)EditorGUILayout.Popup("확장 대상", (int)m_extensionType, options);
             m_typeName = EditorGUILayout.TextField("식별자 영문명 (예: GuildEvent)", m_typeName);
             m_displayName = EditorGUILayout.TextField("표시명 한글명 (예: 길드 이벤트)", m_displayName);
+            m_createClassFile = EditorGUILayout.Toggle("C# 클래스 파일 추가 생성 여부", m_createClassFile);
 
             EditorGUILayout.Space();
 
@@ -97,14 +99,20 @@ namespace BePex.EventSystem.Editor
             {
                 if (func_CreateConditionTypeAsset(m_typeName, m_displayName))
                 {
-                    func_CreateConditionClass(m_typeName, m_displayName);
+                    if (m_createClassFile)
+                    {
+                        func_CreateConditionClass(m_typeName, m_displayName);
+                    }
                 }
             }
             else
             {
                 if (func_CreateRewardTypeAsset(m_typeName, m_displayName))
                 {
-                    func_CreateRewardClass(m_typeName, m_displayName);
+                    if (m_createClassFile)
+                    {
+                        func_CreateRewardClass(m_typeName, m_displayName);
+                    }
                 }
             }
 

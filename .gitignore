@@ -104,3 +104,11 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Agent Docs (Commit Excluded, Local Preserved)
+.agent/docs/advanced-architecture-design.md
+.agent/docs/architecture-design.md
+.agent/docs/architecture-guide.md
+.agent/docs/requirements-specification-checklist.md
+.agent/docs/test-environment-design.md
+

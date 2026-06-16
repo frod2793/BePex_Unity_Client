@@ -40,6 +40,9 @@ namespace BePex.EventSystem.Infrastructure
 
         #region 내부 필드 (Private Fields)
         private CancellationTokenSource m_cts;
+        private EventListViewModel m_listViewModel;
+        private EventDetailViewModel m_detailViewModel;
+        private EventDebugViewModel m_debugViewModel;
         #endregion
 
         #region 유니티 생명주기
@@ -74,6 +77,24 @@ namespace BePex.EventSystem.Infrastructure
                 m_cts.Cancel();
                 m_cts.Dispose();
                 m_cts = null;
+            }
+
+            if (m_listViewModel != null)
+            {
+                m_listViewModel.Dispose();
+                m_listViewModel = null;
+            }
+
+            if (m_detailViewModel != null)
+            {
+                m_detailViewModel.Dispose();
+                m_detailViewModel = null;
+            }
+
+            if (m_debugViewModel is System.IDisposable disposableDebugVM)
+            {
+                disposableDebugVM.Dispose();
+                m_debugViewModel = null;
             }
         }
         #endregion
@@ -164,8 +185,8 @@ namespace BePex.EventSystem.Infrastructure
             var eventModel = new EventModel(eventTableDTO, condFactory, rewFactory, timeProvider);
 
             // 6단계: MVVM ViewModels 수동 생성자 주입 생성
-            var listVM = new EventListViewModel(eventModel, saveSystem);
-            var detailVM = new EventDetailViewModel(eventModel, saveSystem, playerReward);
+            m_listViewModel = new EventListViewModel(eventModel, saveSystem);
+            m_detailViewModel = new EventDetailViewModel(eventModel, saveSystem, playerReward);
             var popupVM = new RewardPopupViewModel(playerReward, saveSystem, eventModel);
             var hudVM = new CurrencyHUDViewModel(playerReward);
 
@@ -178,17 +199,17 @@ namespace BePex.EventSystem.Infrastructure
             // 7단계: Views에 ViewModels 바인딩 연결
             if (m_eventListView != null)
             {
-                m_eventListView.Bind(listVM);
+                m_eventListView.Bind(m_listViewModel);
             }
 
             if (m_eventDetailView != null)
             {
-                m_eventDetailView.Bind(detailVM, listVM, popupVM);
+                m_eventDetailView.Bind(m_detailViewModel, m_listViewModel, popupVM);
             }
 
             if (m_rewardPopupView != null)
             {
-                m_rewardPopupView.Bind(popupVM, detailVM);
+                m_rewardPopupView.Bind(popupVM, m_detailViewModel);
             }
 
             if (m_currencyHUDView != null)
@@ -199,8 +220,8 @@ namespace BePex.EventSystem.Infrastructure
             // 8단계: [디버그 전용] 디버그 모드가 켜져 있고 조작 뷰가 연결된 경우 바인딩 처리
             if (m_useDebugMode && m_debugView != null)
             {
-                var debugVM = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM, m_conditionTypeRegistry);
-                m_debugView.Bind(debugVM);
+                m_debugViewModel = new EventDebugViewModel(eventModel, saveSystem, timeProvider, playerReward, hudVM, m_conditionTypeRegistry);
+                m_debugView.Bind(m_debugViewModel);
                 m_debugView.gameObject.SetActive(true);
             }
             else if (m_debugView != null)

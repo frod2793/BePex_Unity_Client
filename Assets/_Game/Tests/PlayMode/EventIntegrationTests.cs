@@ -82,7 +82,7 @@ namespace BePex.EventSystem.Tests.PlayMode
             });
             questDto.rewards.Add(new RewardDefinitionDTO
             {
-                rewardType = "CreditReward",
+                rewardType = "Credit",
                 amount = 5,
                 displayName = "테스트크레딧"
             });

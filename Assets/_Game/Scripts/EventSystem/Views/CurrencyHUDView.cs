@@ -6,7 +6,7 @@ using BePex.EventSystem.ViewModels;
 namespace BePex.EventSystem.Views
 {
     /// <summary>
-    /// [기능]: 상시 화면 상단에 노출되어 플레이어의 골드(Point), 경험치(Exp), 티켓(Ticket) 보유량을 보여주는 UI 뷰 컴포넌트.
+    /// [기능]: 상시 화면 상단에 노출되어 플레이어의 골드(Point), 경험치(Exp), 티켓(Ticket), 시즌 포인트(SeasonPoint), 크레딧(Credit) 보유량을 보여주는 UI 뷰 컴포넌트.
     /// [작성자]: 윤승종
     /// </summary>
     public class CurrencyHUDView : MonoBehaviour

@@ -33,7 +33,7 @@ namespace BePex.EventSystem.Models
         [JsonIgnore]
         public int totalSeasonPoints => GetCurrencyAmount("SeasonPoint");
         [JsonIgnore]
-        public int totalCredits => GetCurrencyAmount("CreditReward");
+        public int totalCredits => GetCurrencyAmount("Credit");
 
         /// <summary>
         /// [기능]: Newtonsoft.Json 직렬화/역직렬화를 직접 수납하기 위한 딕셔너리 연계 프로퍼티. 대소문자 무시 속성을 상시 동기화합니다.
@@ -89,7 +89,7 @@ namespace BePex.EventSystem.Models
 
 
         /// <summary>
-        /// [기능]: 재화의 식별자 키값을 정규화합니다. (오타 변환 분기 제거)
+        /// [기능]: 재화의 식별자 키값을 정규화합니다.
         /// [작성자]: 윤승종
         /// </summary>
         private string NormalizeCurrencyKey(string typeName)

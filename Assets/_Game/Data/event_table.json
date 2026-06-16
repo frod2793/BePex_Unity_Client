@@ -217,6 +217,33 @@
                     "rewards": []
                 }
             ]
+        },
+        {
+            "eventId": "evt_new_639172267074828660",
+            "eventTitle": "새로운 이벤트",
+            "eventDescription": "이벤트 설명을 입력하세요.",
+            "eventIconAddress": "item_Sheet[item_Sheet_0]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-20",
+            "quests": [
+                {
+                    "questId": "quest_evt_new_639172267074828660_1",
+                    "questTitle": "기본 퀘스트",
+                    "questDescription": "적을 처치하세요.",
+                    "condition": {
+                        "conditionType": "KillCount",
+                        "targetValue": 10
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "Credit",
+                            "amount": 100,
+                            "displayName": "크레딧",
+                            "iconAddress": "item_Sheet[item_Sheet_5]"
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }

@@ -339,7 +339,7 @@ namespace BePex.EventSystem.ViewModelsDebug
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.TrySpendCurrency("CreditReward", amount);
+                m_playerReward.TrySpendCurrency("Credit", amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {

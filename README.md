@@ -24,15 +24,34 @@
 - 로컬 세이브 연동: 어드민과 인게임 앱은 persistentDataPath를 공유하여 로컬 파일 기반으로 데이터를 상호 교환합니다.
 - 어드레서블 및 서버 연동: 인게임 씬 기동 시 실시간 어드레서블 런타임 핫패치(UpdateAddressableCatalogAsync)가 연동되어 있으며, 어드민 기능에는 서버 배포 시뮬레이터(Mock API)를 장착하여 가상 배포 프로세스를 시뮬레이션 및 검증 가능하도록 인프라가 설계되어 있습니다. (실제 Firebase REST API 연동은 추가 확장 지점)
 
-### 🏃‍♂️ 씬(Scene) 실행 방법
+### 🏃‍♂️ 씬(Scene) 실행 및 테스트 방법
 
-#### ① 인게임 이벤트 센터 (Inagme.unity)
-- Assets/_Game/Scenes/Inagme.unity 씬을 열고 Play(▶) 합니다.
-- 💡 테스트/디버그 모드: [System]/EventSceneInitializer 오브젝트 인스펙터에서 m_useDebugMode를 체크하면 우측 하단에 치트 조작 패널(EventDebugView)이 활성화됩니다.
+#### ① 인게임 이벤트 센터 (Inagme.unity - 파일명 오타)
+- **실행 경로**: `Assets/_Game/Scenes/Inagme.unity` 씬(프로젝트 생성 시의 파일명 철자 오타 상태 유지)을 열고 유니티 에디터 Play(▶)를 클릭합니다.
+- **화면 구성 및 조작 방법**:
+  - **`[전체 보상 받기]` 버튼**: 인게임 화면 **중앙 최하단**에 넓게 배치되어 있으며, 달성 완료된 모든 퀘스트의 보상을 단 한번에 일괄 수령하여 상단 자산 HUD에 합산 반영합니다.
+  - **`[디버그 뷰 열기/닫기]` 토글**: 인게임 화면 **우측 최상단 구석**의 작은 버튼으로 배치되어 있으며, 클릭 시 화면 우측에서 디버그/치트 조작 패널이 슬라이딩 형식으로 열리고 닫힙니다.
+- **치트 패널 가동 및 테스트 가이드**:
+  1. 하이어라키에서 `[System]/EventSceneInitializer` 게임오브젝트를 선택합니다.
+  2. 인스펙터 창에서 `m_useDebugMode` 토글을 **체크(ON)**합니다.
+  3. 게임 실행 중 화면 우측에서 열리는 디버그 서랍 내부의 시뮬레이터 조작법은 다음과 같습니다:
+     - **출석 테스트 (시간 가속)**: 디버그 패널 **상단의 [시간 시뮬레이션] 영역**에 있는 `[1일 경과]` 또는 `[7일 경과]` 버튼을 누르면 내부 시스템 날짜가 누적 경과하여, 출석 및 누적 출석 미션이 일 단위로 자동 갱신 및 달성되는 흐름을 가속 검증할 수 있습니다.
+     - **시간 원복**: `[시간 초기화]` 버튼을 누르면 가속되었던 날짜가 다시 원래 기기 시스템 시간으로 복구됩니다.
+     - **퀘스트 수치 조작**: 디버그 패널 **중앙의 [진척도 조작] 리스트**에서 몬스터 처치수나 스테이지 클리어 수치 옆의 `[진척도 추가]` 버튼을 클릭하면, 플레이를 직접 수행하지 않고도 강제로 카운트를 채워 퀘스트 완료 상태를 만들 수 있습니다.
+     - **세이브 완전 삭제**: 디버그 패널 **최하단 구석의 붉은색 [세이브 초기화]** 버튼을 클릭하면, 테스트 과정에서 꼬인 로컬 자산 진행도 파일을 일괄 삭제하여 깔끔한 최초 상태로 되돌립니다.
 
 #### ② 이벤트 관리자 어드민 (EventAdminScene.unity)
-- Assets/_Game/Scenes/EventAdminScene.unity 씬을 열고 Play(▶) 합니다.
-- ⚠️ 주의사항: 좌측 [+ 신규 이벤트]에서 이벤트를 추가/편집 후 [로컬 파일 저장]을 누르면 로컬 JSON이 즉시 변경됩니다. [Firebase 서버 배포] 클릭 시 **서버 배포 시뮬레이터(Mock API)**를 가동하여 1.5초 지연 연산 모킹 과정을 검증 시연합니다.
+- **실행 경로**: `Assets/_Game/Scenes/EventAdminScene.unity` 씬을 열고 Play(▶)를 클릭합니다.
+- **이벤트/퀘스트 저작 패널 조작 방법**:
+  - **`[로컬 파일 저장]` 및 `[Firebase 서버 배포]`**: 화면 **중앙 하단 제어 바 영역**에 배치되어 있어, 이벤트 저작 완료 시 즉각 저장 및 가상 서버 배포 전송을 테스트해볼 수 있습니다.
+  - **`[+ 퀘스트 추가]` 버튼**: 저작 화면 중앙에 있는 이벤트 카드 상자의 **본문 최하단**에 가로로 길게 배치되어 있으며, 클릭하여 하위에 세부 임무를 임의의 개수로 추가합니다.
+  - **`[+ 보상 추가]` 버튼**: 각 퀘스트 줄의 **우측 하단 구석 영역**에 부착된 소형 버튼으로, 클릭하여 해당 임무 성공 시 획득할 자산 종류(골드, 경험치, 티켓, 시즌포인트, 크레딧)와 지급 수량을 유연하게 덧붙여 나갑니다.
+
+#### ③ 이벤트 시스템 확장 (개발자 전용 도구)
+- **동적 자산 및 코드 확장 경로**: 에디터 상단 메뉴 `Tools > BePex > 이벤트 시스템 확장 도구` 윈도우를 켭니다.
+- **동작 원리**:
+  1. 신규 퀘스트 달성 조건 또는 보상 타입을 윈도우에 입력합니다.
+  2. `[C# 파일 추가 생성]` 토글을 켜고 생성 버튼을 누르면, 타입 데이터 에셋이 레지스트리에 자동 등록됨과 동시에 실제 동작 스크립트 코드까지 보일러플레이트 기반으로 자동 컴파일 생성되어 팩토리가 즉시 이 타입을 인지할 수 있는 OCP 핫패치 구조가 완성됩니다.
 
 ### 📦 Standalone 분리 빌드 (빌드 자동화)
 Unity 에디터 상단 메뉴 BePex > Build 를 통해 씬별 단독 실행형 바이너리를 자동 빌드할 수 있습니다.
@@ -81,12 +100,12 @@ flowchart TD
 | 요구 명칭 | 실제 구현 클래스 | 주요 역할 및 설명 |
 | :--- | :--- | :--- |
 | EventManager | EventModel / EventListViewModel | 전체 이벤트 데이터의 로드, 진행 상태, 조건 체크 및 보상 수령 여부를 제어하고 상태 변화를 전파하는 핵심 중재 도메인 모델. |
-| EventTracker | BaseQuestCondition 계열 | 각 이벤트/퀘스트 인스턴스의 달성 조건을 관리하고 현재 진행 수치를 검증 및 추적하는 전략 구현체. |
+| EventTracker | BaseQuestCondition 계열 | 각 이벤트/퀘스트 인스턴스의 달성 조건을 관리하고 현재 진행 수치를 검증 및 추적하는 전략 구현체 (IQuestCondition 구현). |
 | RewardSystem | QuestRewardFactory / PlayerRewardModel | 보상 획득 여부를 감지하고, 팩토리를 통해 보상 인스턴스를 생성한 후 플레이어 재화 및 자산 데이터를 적립시키는 시스템. |
 | AttendanceEvent | AttendanceQuestCondition | 24시간 일일 날짜 대조 가드 로직을 내장하여 일일 1회만 카운트가 제한되도록 추적하는 출석 체크 전담 조건 전략. |
-| MissionEvent | StandardQuestCondition | 적 처치(KillCount), 스테이지 클리어(StageClear) 등 행동 값의 단순 누적 및 한계치 비교를 담당하는 공용 범용 조건 전략. |
+| MissionEvent | KillCountQuestCondition / StandardQuestCondition | 적 처치(KillCount)는 전용 조건 전략 클래스에서 처리하며, 스테이지 클리어(StageClear) 등 별도 전용 조건 클래스가 정의되지 않은 경우 범용 조건 전략(StandardQuestCondition)으로 자동 폴백되어 비교를 수행함. |
 | EventPointSystem | EventPointManager / PlayerRewardModel | "Point" 키를 내부로 숨겨 마술 문자열에 의한 오타 결함을 차단하고, 스테이지 클리어 및 광고 시청 시 포인트를 적립/소모하는 전담 비즈니스 포인트 관리기. |
-| SaveSystem | JsonSaveSystem / CachedSaveSystem | 플레이어 진행 상황 및 획득한 보상 재화 DTO를 로컬 파일 디스크 I/O 기반으로 영속 저장 및 복구하는 입출력 장치. |
+| SaveSystem | JsonSaveSystem / CachedSaveSystem | 플레이어 진행 상황 및 획득한 보상 재화 DTO를 로컬 파일 디스크 I/O 기반으로 영속 저장 및 복구하는 입출력 장치 (ISaveSystem 구현). |
 | EventUI | EventListView / CurrencyHUDView 등 | View-ViewModel 데이터 바인딩(Action 이벤트 및 Command 호출)을 따르는 MVVM 기반 UI 뷰 컴포넌트군. |
 
 ### 2.4 아키텍처 계층 상세
@@ -110,12 +129,104 @@ flowchart TD
 > 에디터 툴 위치: 상단 메뉴 Tools > BePex > 이벤트 시스템 확장 도구
 
 - ✅ [권장] 단순 카운트 조건 (C# 코딩 ❌)
-  1. 확장 대상 이벤트 타입 선택 ➔ 영문 식별자(예: LoginCount) 입력.
+  1. 확장 대상 이벤트 타입 선택 ➔ 영문 식별자(예: StageClear) 입력.
   2. "C# 파일 추가 생성" 토글 OFF 후 실행.
-  3. 데이터 에셋만 자동 등록되며, 런타임에 범용 StandardQuestCondition으로 자동 매핑됩니다.
+  3. 데이터 에셋만 자동 등록되며, 런타임에 범용 `StandardQuestCondition`으로 자동 매핑되어 작동합니다.
 - ⚠️ 특수 가드 로직 필요 시 (C# 코딩 ⭕️)
   1. 위 설정에서 "C# 파일 추가 생성" 토글 ON 후 실행.
-  2. 자동 생성된 스크립트의 CanAddProgress를 오버라이드하여 특수 로직을 구현합니다.
+  2. 자동 생성된 스크립트의 `CanAddProgress`를 오버라이드하여 특수 로직을 구현합니다.
+
+#### [C# 확장 구현 예시: KillCountQuestCondition]
+특정 조건(예: 몬스터 처치 시 종류 필터링 및 진척도 추가 시점의 가드 처리)을 구현하기 위해 C# 소스 코드를 추가하는 예시입니다.
+
+```csharp
+using UnityEngine;
+using BePex.EventSystem.Interfaces;
+using BePex.EventSystem.Data;
+using BePex.EventSystem.Models;
+
+namespace BePex.EventSystem.Conditions
+{
+    /// <summary>
+    /// [기능]: 몬스터 처치 수 조건을 판정하며, 특정 몬스터 필터 및 런타임 진행 제한 가드 로직을 처리하는 조건 전략 클래스.
+    /// [작성자]: 윤승종
+    /// </summary>
+    [QuestCondition("KillCount")]
+    public class KillCountQuestCondition : BaseQuestCondition
+    {
+        #region 내부 필드
+        private readonly string m_targetMonsterType;
+        #endregion
+
+        #region 초기화
+        /// <summary>
+        /// [기능]: 팩토리 동적 생성을 위한 5인자 표준 생성자입니다. 기반 클래스 생성자로 인자들을 체이닝 전달합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 5인자 필수 생성자 구현
+        /// </summary>
+        public KillCountQuestCondition(int targetValue, ISaveSystem saveSystem, ITimeProvider timeProvider, string eventId, string questId)
+            : base(targetValue, saveSystem, timeProvider, eventId, questId)
+        {
+            m_targetMonsterType = "All";
+        }
+        #endregion
+
+        #region 공개 메서드
+        /// <summary>
+        /// [기능]: 진행도를 누적할 수 있는지 여부를 검사하는 가드 메서드입니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 진행 조건 제한(예: 이벤트 기간 만료 등) 검증 오버라이드
+        /// </summary>
+        public override bool CanAddProgress(EventProgressModel progress)
+        {
+            if (progress == null)
+            {
+                return false;
+            }
+
+            // 예시: 퀘스트가 이미 완료되었다면 더 이상 진행도를 쌓지 않음
+            if (progress.TryGetQuestProgress(m_questId, out var qp))
+            {
+                return !qp.isCompleted;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// [기능]: 외부 처치 이벤트가 발생했을 때 필터 조건에 부합하는지 평가합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 몬스터 타입 일치 여부 판정
+        /// </summary>
+        public bool EvaluateMonsterKill(string killedMonsterType)
+        {
+            if (string.IsNullOrEmpty(killedMonsterType))
+            {
+                return false;
+            }
+
+            if (m_targetMonsterType.Equals("All", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return m_targetMonsterType.Equals(killedMonsterType, System.StringComparison.OrdinalIgnoreCase);
+        }
+        #endregion
+    }
+}
+```
+
+#### [런타임 OCP 자동 바인딩 원리]
+1. **어트리뷰트 선언**: 클래스 정의 상단에 `[QuestCondition("KillCount")]` 어트리뷰트를 부착합니다.
+2. **리플렉션 레지스트리 바인딩**: `QuestConditionFactory`가 초기화될 때 어셈블리 내 `IQuestCondition` 인터페이스를 구현하고 해당 어트리뷰트가 있는 타입을 스캔하여 생성용 맵에 등록합니다.
+3. **동적 생성 및 실행**: 인게임 진입 시 팩토리에서 저장된 문자열 식별자를 읽어 `Activator.CreateInstance`를 사용해 동적으로 전략 인스턴스를 인스턴스화하고 주입합니다.
 
 ### 3.2 새로운 보상 타입 추가
 - ✅ [권장] 단순 가산형 재화 추가 (C# 코딩 ❌)
@@ -125,14 +236,68 @@ flowchart TD
 - ⚠️ 특수 연출 / 우편함 연동 필요 시 (C# 코딩 ⭕️)
   1. 토글 ON으로 C# 파일 생성 후 Grant() 메서드 내부에 외부 API 호출을 작성합니다.
 
+#### [C# 확장 구현 예시: SampleQuestReward]
+특수 연출이나 외부 연동(예: 우편함 API 호출, 특수 패키지 아이템 런타임 지급 등)을 구현하기 위해 C# 소스 코드를 추가하는 예시입니다.
+
+```csharp
+using UnityEngine;
+using BePex.EventSystem.Interfaces;
+using BePex.EventSystem.Models;
+
+namespace BePex.EventSystem.Rewards
+{
+    /// <summary>
+    /// [기능]: 플레이어 자산의 즉시 가산이 아닌 외부 시스템 연동을 시뮬레이션하기 위한 예시용 보상 전략 클래스.
+    /// [작성자]: 윤승종
+    /// </summary>
+    [QuestReward("Sample")]
+    public class SampleQuestReward : BaseQuestReward
+    {
+        #region 초기화
+        /// <summary>
+        /// [기능]: 지급할 보상 수량 및 표시 이름을 주입받아 초기화합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 최초 정의
+        /// </summary>
+        public SampleQuestReward(int amount, string displayName) : base(amount, displayName)
+        {
+        }
+        #endregion
+
+        #region 공개 메서드
+        /// <summary>
+        /// [기능]: 외부 플랫폼이나 연동 시스템에 보상 청구 요청을 가상으로 발행합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: 시뮬레이션 로그 작성
+        /// </summary>
+        public override void Grant(PlayerRewardModel playerReward)
+        {
+            // 실제 PlayerRewardModel의 변수를 조작하지 않고 외부 시뮬레이션 로그 기록
+            Debug.Log($"[SampleQuestReward] [외부 연동 성공] 보상명: {m_displayName}, 수량: {m_amount} 지급 완료.");
+        }
+        #endregion
+    }
+}
+```
+
+#### [런타임 OCP 자동 바인딩 원리]
+1. **어트리뷰트 선언**: 클래스 정의 상단에 `[QuestReward("Sample")]` 어트리뷰트를 부착합니다.
+2. **리플렉션 레지스트리 바인딩**: `QuestRewardFactory`가 초기화될 때 어셈블리 내 `IQuestReward` 인터페이스를 구현하고 해당 어트리뷰트가 있는 타입을 스캔하여 생성용 맵에 등록합니다.
+3. **동적 생성 및 실행**: 보상 수령 시점에 팩토리에서 저장된 문자열 식별자를 읽어 `Activator.CreateInstance`를 사용해 동적으로 보상 전략 인스턴스를 인스턴스화하고 주입합니다.
+
 ### 3.3 리액티브 이벤트 포인트 획득 흐름 (UML)
-인게임 컨트롤러에서 `EventPointManager`를 주입받아 포인트를 적립하면, MVVM 아키텍처를 통해 UI까지 데이터가 단방향으로 자동 전파됩니다. 이 구조는 마술 문자열 `"Point"` 호출을 내부로 캡슐화하여 결합도를 낮춥니다.
+인게임 컨트롤러에서 `EventPointManager`를 주입받아 포인트를 적립하면, 순수 POCO 모델을 침범하지 않고 뷰모델 간의 단방향 흐름을 통해 UI까지 데이터가 자동 전파됩니다. 이 구조는 마술 문자열 `"Point"` 호출을 내부로 캡슐화하여 결합도를 낮춥니다.
 
 ```mermaid
 sequenceDiagram
     participant SM as StageManager (인게임)
     participant EPM as EventPointManager (비즈니스 모델)
-    participant PRM as PlayerRewardModel (도메인)
+    participant PRM as PlayerRewardModel (도메인 DTO)
+    participant RVM as RewardPopupViewModel (또는 DebugVM)
     participant CHVM as CurrencyHUDViewModel
     participant CHV as CurrencyHUDView (UI)
 
@@ -142,9 +307,12 @@ sequenceDiagram
     EPM->>PRM: AddCurrency("Point", 15)
     activate PRM
     PRM-->>PRM: 재화 딕셔너리 갱신 (+15)
-    PRM->>CHVM: OnBalancesChanged 이벤트 트리거
     deactivate PRM
+    EPM->>RVM: OnRewardDataChanged 또는 직접 통지 트리거
     deactivate EPM
+    activate RVM
+    RVM->>CHVM: NotifyCurrencyChanged() 이벤트 체이닝 전파
+    deactivate RVM
     activate CHVM
     CHVM->>CHVM: 뷰모델 상태 갱신
     CHVM->>CHV: UI 업데이트 Action 통지
@@ -204,9 +372,9 @@ public class StageManager
 
 - 총 작업 시간 : 49.5시간
   - 12.0시간 : 설계 및 문서화
-  - 15.5시간 : 이벤트 시스템 로직 및 OCP 팩토리 구현
-  - 10.0시간 : UI 및 MVVM 연동
-  - 12.0시간 : 비동기 세이브 처리 및 Newtonsoft.Json 호환성 보완 검증
+  - 10.5시간 : 이벤트 시스템 로직 및 OCP 팩토리 구현
+  - 3.0시간 : UI 및 MVVM 연동
+  - 24.0시간 : 비동기 세이브 처리 및 Newtonsoft.Json 호환성 보완 검증(테스트 및 버그수정 포함)
 
 ---
 
@@ -214,7 +382,6 @@ public class StageManager
 
 - 사용한 AI 도구: Antigravity Agent (Opus 4.8 / Gemini / Claude 계열)
 - 사용 범위:
-  - PlayerRewardModel의 Newtonsoft.Json 직렬화 전환 및 [OnDeserialized] 하위 호환 마이그레이션 적용.
   - CachedSaveSystem의 Awaitable Detached State 크래시 방지를 위한 락(Lock) 구조 아이디어.
   - 팩토리 폴백(Fallback) 라우팅 로직 정교화 및 보일러플레이트 축소.
   - **오타 결함 방지용 EventPointManager 도입**: 마술 문자열 `"Point"` 호출을 캡슐화하는 비즈니스 레이어 설계 제안.

@@ -45,8 +45,9 @@ namespace BePex.EventSystem.Infrastructure
         public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            bool isPlaying = Application.isPlaying;
             
-            if (Application.isPlaying)
+            if (isPlaying)
             {
                 while (m_activeWrites.Contains(eventId))
                 {

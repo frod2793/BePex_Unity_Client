@@ -90,7 +90,8 @@ namespace BePex.EventSystem.Infrastructure
             // 1단계: 저장 장치 및 시간 제공자 선택 (디버그 모드와 관계없이 JsonSaveSystem을 기본 사용하여 씬 재시작 시 상태 유지)
             ISaveSystem rawSaveSystem = new JsonSaveSystem();
             ISaveSystem cachedSaveSystem = new CachedSaveSystem(rawSaveSystem);
-            ISaveSystem saveSystem = new RetrySaveSystemDecorator(cachedSaveSystem);
+            ISaveSystem retrySaveSystem = new RetrySaveSystemDecorator(cachedSaveSystem);
+            ISaveSystem saveSystem = new TransactionalSaveSystemDecorator(retrySaveSystem);
                 
             ITimeProvider timeProvider = (m_useDebugMode && m_debugView != null)
                 ? new BePex.EventSystem.Infrastructure.DebugTimeProvider()

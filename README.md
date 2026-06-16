@@ -193,6 +193,10 @@ public class StageManager
 - 씬 전환 시 의존성 전달의 한계 (Pure DI)
   - 각 씬의 SceneInitializer가 독자적 DI 루트 역할을 하여, 싱글톤 배제 시 씬 간 인스턴스 전파에 제약이 발생합니다.
   - 개선 방향: 현재로서는 프레임워크 오버헤드를 막기 위해 **VContainer 도입을 보류**하고 Pure DI 구조를 고수합니다. 향후 프로젝트의 서비스 레이어가 대규모 확장될 경우, `LifetimeScope` 기반의 VContainer 도입 및 종속성 컴포지션을 적극 검토 및 적용할 계획입니다.
+- 중복 로직 공통화 및 코드 가독성 개선 방향
+  - **팩토리 리플렉션 및 생성 유틸리티 공통화**: `QuestConditionFactory`와 `QuestRewardFactory`에 나뉘어 존재하는 타입 검색 및 리플렉션 생성부를 `ReflectionFactoryHelper`로 분리하여 팩토리 간 중복 코드를 해소하고 구조를 간결히 유지할 계획입니다.
+  - **세이브 데코레이터 재시도 백오프 구조 보완**: `RetrySaveSystemDecorator` 내에서 개별 메서드 단위로 작성된 비동기 재시도 루프를 대리자(Func<Awaitable>) 기반 메서드(`ExecuteWithRetryAsync`)로 단일화하여, 백오프 계산 공식의 관리 지점을 일원화할 예정입니다.
+  - **CloudSaveSystem 웹 요청 비동기 취소 처리 격리**: `CloudSaveSystem`에서 웹 API 호출 시 반복 수행되는 `UnityWebRequest` 비동기 취소 및 Abort 감지 대기를 `SendWebRequestAsync` 공통 메서드로 감싸서, 도메인 데이터 송수신 본연의 로직에 대한 집중도와 코드 가독성을 보완할 계획입니다.
 
 ---
 
@@ -213,8 +217,11 @@ public class StageManager
   - PlayerRewardModel의 Newtonsoft.Json 직렬화 전환 및 [OnDeserialized] 하위 호환 마이그레이션 적용.
   - CachedSaveSystem의 Awaitable Detached State 크래시 방지를 위한 락(Lock) 구조 아이디어.
   - 팩토리 폴백(Fallback) 라우팅 로직 정교화 및 보일러플레이트 축소.
+  - **오타 결함 방지용 EventPointManager 도입**: 마술 문자열 `"Point"` 호출을 캡슐화하는 비즈니스 레이어 설계 제안.
+  - **Awaitable 백그라운드 스레드 유니티 API 참조 예외 해결**: `JsonSaveSystem` 및 `CachedSaveSystem` 비동기 메서드에서 스레드 이전 전 메인 스레드 상태값을 캐싱하는 로직 보완 및 리팩토링.
 - 검증 방법:
   - 제안된 로직은 Unity Test Runner의 EditMode(24종) 및 PlayMode(6종) 총 30종의 단위/통합 시나리오를 통과시켜 무결성을 100% 교차 검증했습니다.
+  - 스레딩 크래시 해결 후 비동기 파일 I/O 및 프레임 대기 동작의 정상 예외 가드를 실 기동 검증으로 확보하였습니다.
 
 ---
 

@@ -186,6 +186,10 @@ namespace BePex.EventSystem.ViewModels
                     {
                         OnErrorOccurred.Invoke("[EventAdminViewModel] 이벤트 ID가 공란입니다.");
                     }
+                    if (OnUploadCompleted != null)
+                    {
+                        OnUploadCompleted.Invoke(false);
+                    }
                     return false;
                 }
                 if (string.IsNullOrEmpty(ev.eventTitle))
@@ -194,8 +198,27 @@ namespace BePex.EventSystem.ViewModels
                     {
                         OnErrorOccurred.Invoke($"[EventAdminViewModel] 이벤트 ID ({ev.eventId})의 제목이 공란입니다.");
                     }
+                    if (OnUploadCompleted != null)
+                    {
+                        OnUploadCompleted.Invoke(false);
+                    }
                     return false;
                 }
+            }
+
+            // 로컬 디스크 저장 절차 자동 삽입
+            bool saveSuccess = await SaveToLocalFileAsync();
+            if (saveSuccess == false)
+            {
+                if (OnErrorOccurred != null)
+                {
+                    OnErrorOccurred.Invoke("[EventAdminViewModel] 로컬 파일 저장 실패로 인해 서버 업로드가 차단되었습니다.");
+                }
+                if (OnUploadCompleted != null)
+                {
+                    OnUploadCompleted.Invoke(false);
+                }
+                return false;
             }
 
             bool success = await m_firebaseService.UploadEventTableAsync(m_eventTable);

@@ -689,29 +689,10 @@ namespace BePex.EventSystem.Views
                 func_SubmitEventFormChanges();
                 func_SubmitQuestFormChanges();
 
-                // 1단계: 로컬 저장 선행
                 if (m_statusText != null)
                 {
                     m_statusText.color = Color.white;
-                    m_statusText.text = "로컬 저장 중...";
-                }
-
-                bool saveSuccess = await m_viewModel.SaveToLocalFileAsync();
-                if (saveSuccess == false)
-                {
-                    if (m_statusText != null)
-                    {
-                        m_statusText.color = Color.red;
-                        m_statusText.text = "[EventAdminView] 로컬 저장 실패로 인해 서버 배포가 취소되었습니다.";
-                    }
-                    return;
-                }
-
-                // 2단계: 로컬 저장 성공 시 서버 업로드 개시
-                if (m_statusText != null)
-                {
-                    m_statusText.color = Color.white;
-                    m_statusText.text = "서버 배포 중...";
+                    m_statusText.text = "서버 배포 중 (자동 저장 진행)...";
                 }
 
                 await m_viewModel.UploadToFirebaseAsync();

@@ -167,7 +167,7 @@ public class StageManager : MonoBehaviour
   - 특수 가드 로직이 필요 없는 단순 수치 비교의 경우, 추가 파일 생성 없이 에셋 파일(`*TypeSO`) 등록만으로 팩토리가 폴백 매핑(`StandardQuestCondition`, `GeneralQuestReward`)하도록 구현했습니다.
 - **관심사 분리 (SoC) 및 MVVM 준수**:
   - UI 뷰(`MonoBehaviour`)는 오직 데이터 바인딩(UI 갱신) 및 유저 클릭 전달 역할만 수행합니다. 비즈니스 도메인(`EventModel`, `PlayerRewardModel`)과 세이브 I/O는 순수 C# POCO 클래스로 격리하여 게임 로직의 유지보수성을 극대화했습니다.
-- **데이터와 로직의 엄격한 분리**:
+- **데이터와 로직의 분리**:
   - 상태 데이터(`EventTableDTO`, `EventProgressModel`)는 어떤 판정 로직도 직접 내포하지 않는 순수 DTO 형태를 유지합니다. 판정 및 실행에 대한 구동 로직은 전략 패턴의 조건/보상 핸들러(`BaseQuestCondition` 등)로 분리되어 독립적으로 관리됩니다.
 - **서버 기능 확장성 고려**:
   - 로컬 I/O 인터페이스(`ISaveSystem`)와 클라우드 업로드 인터페이스(`IFirebaseUploadService`)를 공용 규격으로 정의함으로써, 추후 실제 백엔드 서버 DB(Firebase Realtime DB, REST API 서버 등)로 연동 대상을 손쉽게 교체할 수 있도록 지연 결합(DIP) 설계되었습니다.
@@ -176,9 +176,6 @@ public class StageManager : MonoBehaviour
 - **씬 전환 시 의존성 전달의 한계 (Pure DI)**:
   - 현재는 각 씬에 배치된 `EventSceneInitializer`와 `EventAdminSceneInitializer`가 각기 독자적인 DI 컴포지션 루트 역할을 수행합니다. 이에 따라 씬을 넘나들며 인스턴스(예: 플레이어 재화 정보)를 전달할 때 전역 클래스(싱글톤)가 배제된 구조에서는 인스턴스 전파에 제약이 발생합니다.
   - **개선 방향**: `VContainer`를 도입하여 글로벌 수명 주기(`ProjectLifetimeScope`) 상에 영구 인스턴스를 바인딩하고, 씬 전환 시 `LifetimeScope`를 참조 주입받아 의존성을 유연하게 상속받을 수 있도록 변경할 예정입니다.
-- **Addressables 리소스 적용 시점의 제약**:
-  - 현재는 어드민 갱신 후 에디터 빌드 시점에 에셋을 내장하고 있습니다. 런타임 상에서 실시간으로 데이터 테이블을 서버로부터 핫리로드하거나 다운로드받는 동적 패치가 배제되어 있습니다.
-  - **개선 방향**: 인게임 로드 시점에 Addressables 로컬 에셋을 강제 호출하는 흐름에서 탈피하고, `Addressables.UpdateCatalogAsync` 및 원격 서버 버킷(AWS S3 등)을 런타임에 동적으로 탐색하여 실제 라이브 서비스에서 가능한 핫픽스 패치 구조로 변경을 제안합니다.
 
 ---
 

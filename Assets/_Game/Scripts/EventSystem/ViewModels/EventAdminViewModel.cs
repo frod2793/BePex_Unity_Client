@@ -114,14 +114,21 @@ namespace BePex.EventSystem.ViewModels
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: EditMode 테스트 환경에서 Awaitable 스케줄러 데드락 정지 해결을 위해 Application.isPlaying 분기 가드 적용
+        /// [수정 내용]: 에디터가 아닌 standalone 빌드 환경 시 세이브 공유 폴더인 persistentDataPath에 이벤트 JSON을 저장하도록 경로 분기 처리
         /// </summary>
         public async Awaitable<bool> SaveToLocalFileAsync(string customPath = null)
         {
             string path = customPath;
             if (string.IsNullOrEmpty(path))
             {
-                path = Path.Combine(Application.dataPath, "_Game/Data/event_table.json");
+                if (Application.isEditor)
+                {
+                    path = Path.Combine(Application.dataPath, "_Game/Data/event_table.json");
+                }
+                else
+                {
+                    path = Path.Combine(Application.persistentDataPath, "event_table.json");
+                }
             }
 
             try

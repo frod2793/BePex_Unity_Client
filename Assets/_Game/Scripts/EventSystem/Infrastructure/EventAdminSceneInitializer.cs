@@ -83,17 +83,32 @@ namespace BePex.EventSystem.Infrastructure
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            // 1순위: 세이브 공유 폴더에서 어드민이 수정한 최신 파일 로딩 시도 (빌드 환경용)
+            string sharedPath = Path.Combine(Application.persistentDataPath, "event_table.json");
+            // 2순위: 프로젝트 Assets 폴더 경로의 JSON 탐색 (에디터 전용)
             string localPath = Path.Combine(Application.dataPath, "_Game/Data/event_table.json");
-            if (File.Exists(localPath))
+
+            string activePath = null;
+            if (File.Exists(sharedPath))
+            {
+                activePath = sharedPath;
+            }
+            else if (File.Exists(localPath))
+            {
+                activePath = localPath;
+            }
+
+            if (activePath != null)
             {
                 try
                 {
-                    string json = File.ReadAllText(localPath);
+                    string json = File.ReadAllText(activePath);
                     eventTableDTO = JsonUtility.FromJson<EventTableDTO>(json);
+                    Debug.Log($"[EventAdminSceneInitializer] 파일({activePath})로부터 이벤트 테이블을 성공적으로 복원했습니다.");
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.LogWarning($"[EventAdminSceneInitializer] 로컬 파일 로드 실패, 어드레서블 시도: {ex.Message}");
+                    Debug.LogWarning($"[EventAdminSceneInitializer] 파일 로드 실패: {ex.Message}");
                 }
             }
 

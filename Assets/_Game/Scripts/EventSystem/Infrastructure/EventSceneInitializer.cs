@@ -9,6 +9,7 @@ using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.ViewModelsDebug;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.DTOs;
+using System.IO;
 using System.Threading;
 
 namespace BePex.EventSystem.Infrastructure
@@ -79,11 +80,12 @@ namespace BePex.EventSystem.Infrastructure
 
         #region 초기화
         /// <summary>
-        /// [기능]: 비즈니스 로직 및 ViewModel 인스턴스를 순차 수동 DI 생성 조립하고 각 View에 바인드합니다. 어드레서블을 통해 비동기로 테이블을 다운로드합니다.
+        /// [기능]: 비즈니스 로직 및 ViewModel 인스턴스를 순차 수동 DI 생성 조립하고 각 View에 바인드합니다. 
+        ///         원격 카탈로그 업데이트가 존재할 경우 다운로드 패치 후 테이블 데이터를 로드합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 취소 제어를 위한 CancellationToken 매개변수 도입 및 전달 연계
+        /// [수정 내용]: 어드레서블 런타임 원격 핫패치 체크 및 persistentDataPath 우선 로딩 정책 적용
         /// </summary>
         private async Awaitable InitializeAsync(CancellationToken cancellationToken)
         {
@@ -99,24 +101,53 @@ namespace BePex.EventSystem.Infrastructure
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 2단계: Addressables 기반 데이터 로딩 (JSON TextAsset)
+            // 1.5단계: 실시간 어드레서블 원격 카탈로그 및 다운로드 업데이트 체크
+            await UpdateAddressableCatalogAsync(cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 2단계: 최신 공유 세이브 경로 파일(1순위) 또는 어드레서블 에셋 번들(2순위 폴백) 데이터 로딩
             EventTableDTO eventTableDTO = null;
-            if (!string.IsNullOrEmpty(m_eventJsonAddress))
+            string sharedPath = System.IO.Path.Combine(Application.persistentDataPath, "event_table.json");
+
+            if (System.IO.File.Exists(sharedPath))
             {
-                var handle = Addressables.LoadAssetAsync<TextAsset>(m_eventJsonAddress);
-                TextAsset jsonAsset = await handle.Task;
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (jsonAsset != null)
+                try
                 {
-                    eventTableDTO = JsonUtility.FromJson<EventTableDTO>(jsonAsset.text);
+                    string json = System.IO.File.ReadAllText(sharedPath);
+                    eventTableDTO = JsonUtility.FromJson<EventTableDTO>(json);
+                    Debug.Log($"[EventSceneInitializer] 공유 persistentDataPath에서 최신 이벤트 테이블을 로드했습니다: {sharedPath}");
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[EventSceneInitializer] 공유 폴더 데이터 로딩 실패, 어드레서블 시도: {ex.Message}");
+                }
+            }
+
+            if (eventTableDTO == null && !string.IsNullOrEmpty(m_eventJsonAddress))
+            {
+                try
+                {
+                    var handle = Addressables.LoadAssetAsync<TextAsset>(m_eventJsonAddress);
+                    TextAsset jsonAsset = await handle.Task;
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (jsonAsset != null)
+                    {
+                        eventTableDTO = JsonUtility.FromJson<EventTableDTO>(jsonAsset.text);
+                        Debug.Log("[EventSceneInitializer] 어드레서블 에셋으로부터 최신 이벤트 테이블을 로드했습니다.");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[EventSceneInitializer] 어드레서블 에셋 로드 최종 실패: {ex.Message}");
                 }
             }
 
             if (eventTableDTO == null)
             {
-                Debug.LogError("[EventSceneInitializer] EventTableJson 어드레서블 로드에 실패했습니다.");
+                Debug.LogError("[EventSceneInitializer] 데이터 테이블 로드에 최종 실패했습니다.");
                 return;
             }
 
@@ -178,6 +209,54 @@ namespace BePex.EventSystem.Infrastructure
             }
 
             Debug.Log("[EventSceneInitializer] Addressables 기반 비동기 씬 초기화 완료.");
+        }
+
+        /// <summary>
+        /// [기능]: 원격 어드레서블 서버의 카탈로그 업데이트를 체크하고 갱신된 에셋 번들을 자동 다운로드합니다. (예외 가드 탑재)
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async Awaitable UpdateAddressableCatalogAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                Debug.Log("[EventSceneInitializer] 어드레서블 카탈로그 업데이트 검사를 시작합니다.");
+                
+                // 1. 카탈로그 업데이트 여부 비동기 확인
+                var checkHandle = Addressables.CheckForCatalogUpdates(false);
+                var catalogsToUpdate = await checkHandle.Task;
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (catalogsToUpdate != null && catalogsToUpdate.Count > 0)
+                {
+                    Debug.Log($"[EventSceneInitializer] {catalogsToUpdate.Count}개의 신규 어드레서블 카탈로그 변경 발견. 업데이트 진행...");
+                    
+                    // 2. 카탈로그 정보 갱신 적용
+                    var updateHandle = Addressables.UpdateCatalogs(catalogsToUpdate, false);
+                    await updateHandle.Task;
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // 3. 갱신된 최신 에셋 디펜던시(번들) 자동 사전 다운로드
+                    var downloadHandle = Addressables.DownloadDependenciesAsync(m_eventJsonAddress, true);
+                    await downloadHandle.Task;
+                    
+                    Debug.Log("[EventSceneInitializer] 원격 카탈로그 핫패치 및 에셋 다운로드 완료.");
+                }
+                else
+                {
+                    Debug.Log("[EventSceneInitializer] 어드레서블 카탈로그가 이미 최신 상태입니다.");
+                }
+            }
+            catch (System.OperationCanceledException)
+            {
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                // 인터넷 연결 부재나 서버 응답 에러 발생 시 부드러운 오프라인 폴백 허용
+                Debug.LogWarning($"[EventSceneInitializer] 카탈로그 업데이트 검사 중 오류 발생 (로컬 캐시로 진행): {ex.Message}");
+            }
         }
         #endregion
     }

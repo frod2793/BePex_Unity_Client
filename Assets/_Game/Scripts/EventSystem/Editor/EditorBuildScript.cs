@@ -41,11 +41,11 @@ namespace BePex.EventSystem.Editor
         }
 
         /// <summary>
-        /// [기능]: 어드레서블 에셋을 선제 자동 리빌드한 후 인게임 씬(SampleScene)만 포함하는 독립 빌드를 수행합니다.
+        /// [기능]: 어드레서블 에셋을 선제 자동 리빌드한 후 인게임 씬(Inagme)만 포함하는 독립 빌드를 수행합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: 인게임 씬 실제 경로명인 Inagme.unity로 정정 반영
         /// </summary>
         [MenuItem("BePex/Build/Build Ingame Standalone")]
         public static void func_BuildIngameOnly()
@@ -55,7 +55,7 @@ namespace BePex.EventSystem.Editor
             // 1. 인게임 빌드 전 어드레서블 자산 자동 리빌드 연동
             RebuildAddressables();
 
-            string[] scenes = { "Assets/_Game/Scenes/SampleScene.unity" };
+            string[] scenes = { "Assets/_Game/Scenes/Inagme.unity" };
             string buildPath = GetBuildPath("Ingame");
             
             BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions

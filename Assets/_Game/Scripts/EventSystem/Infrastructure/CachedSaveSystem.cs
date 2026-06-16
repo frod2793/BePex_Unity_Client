@@ -46,9 +46,12 @@ namespace BePex.EventSystem.Infrastructure
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            while (m_activeWrites.Contains(eventId))
+            if (Application.isPlaying)
             {
-                await Awaitable.NextFrameAsync(cancellationToken);
+                while (m_activeWrites.Contains(eventId))
+                {
+                    await Awaitable.NextFrameAsync(cancellationToken);
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();

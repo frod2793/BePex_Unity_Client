@@ -52,10 +52,16 @@ namespace BePex.EventSystem.Infrastructure
                 return new EventProgressModel { eventId = eventId };
             }
             
-            await Awaitable.BackgroundThreadAsync(); // 파일 I/O 스레드 전환
+            if (Application.isPlaying)
+            {
+                await Awaitable.BackgroundThreadAsync(); // 파일 I/O 스레드 전환
+            }
             cancellationToken.ThrowIfCancellationRequested();
             string json = File.ReadAllText(path);
-            await Awaitable.MainThreadAsync();       // 메인 스레드 복귀
+            if (Application.isPlaying)
+            {
+                await Awaitable.MainThreadAsync();       // 메인 스레드 복귀
+            }
             cancellationToken.ThrowIfCancellationRequested();
             
             return JsonConvert.DeserializeObject<EventProgressModel>(json);
@@ -74,10 +80,16 @@ namespace BePex.EventSystem.Infrastructure
             string path = Path.Combine(m_saveDir, $"event_progress_{eventId}.json");
             string json = JsonConvert.SerializeObject(progress, Formatting.Indented);
             
-            await Awaitable.BackgroundThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.BackgroundThreadAsync();
+            }
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(path, json);
-            await Awaitable.MainThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.MainThreadAsync();
+            }
         }
 
         /// <summary>
@@ -96,10 +108,16 @@ namespace BePex.EventSystem.Infrastructure
                 return new PlayerRewardModel();
             }
             
-            await Awaitable.BackgroundThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.BackgroundThreadAsync();
+            }
             cancellationToken.ThrowIfCancellationRequested();
             string json = File.ReadAllText(path);
-            await Awaitable.MainThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.MainThreadAsync();
+            }
             cancellationToken.ThrowIfCancellationRequested();
             
             return JsonConvert.DeserializeObject<PlayerRewardModel>(json);
@@ -118,10 +136,16 @@ namespace BePex.EventSystem.Infrastructure
             string path = Path.Combine(m_saveDir, "player_rewards.json");
             string json = JsonConvert.SerializeObject(rewardState, Formatting.Indented);
             
-            await Awaitable.BackgroundThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.BackgroundThreadAsync();
+            }
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(path, json);
-            await Awaitable.MainThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.MainThreadAsync();
+            }
         }
 
         /// <summary>
@@ -134,7 +158,10 @@ namespace BePex.EventSystem.Infrastructure
         public async Awaitable ClearAllAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await Awaitable.BackgroundThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.BackgroundThreadAsync();
+            }
             cancellationToken.ThrowIfCancellationRequested();
             if (Directory.Exists(m_saveDir))
             {
@@ -144,7 +171,10 @@ namespace BePex.EventSystem.Infrastructure
                     File.Delete(files[i]);
                 }
             }
-            await Awaitable.MainThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.MainThreadAsync();
+            }
         }
 
         /// <summary>
@@ -163,11 +193,17 @@ namespace BePex.EventSystem.Infrastructure
             string rewardPath = Path.Combine(m_saveDir, "player_rewards.json");
             string rewardJson = JsonConvert.SerializeObject(rewardState, Formatting.Indented);
 
-            await Awaitable.BackgroundThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.BackgroundThreadAsync();
+            }
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(progressPath, progressJson);
             File.WriteAllText(rewardPath, rewardJson);
-            await Awaitable.MainThreadAsync();
+            if (Application.isPlaying)
+            {
+                await Awaitable.MainThreadAsync();
+            }
         }
         #endregion
     }

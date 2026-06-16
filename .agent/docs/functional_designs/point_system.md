@@ -41,6 +41,14 @@ classDiagram
         +GetBalance(string) int
     }
 
+    class EventPointManager {
+        +POINT_KEY string
+        -PlayerRewardModel m_playerReward
+        +AddPoint(int)
+        +TrySpendPoint(int) bool
+        +GetPointBalance() int
+    }
+
     class CurrencyHUDViewModel {
         -PlayerRewardModel m_rewardModel
         +OnCurrencyChanged Action~string, int~
@@ -55,6 +63,7 @@ classDiagram
     IQuestReward <|.. BaseQuestReward
     BaseQuestReward <|-- GeneralQuestReward
     GeneralQuestReward ..> PlayerRewardModel : Modifies
+    EventPointManager --> PlayerRewardModel : Delegates & Wraps
     CurrencyHUDViewModel --> PlayerRewardModel : Refers
     CurrencyHUDView --> CurrencyHUDViewModel : Observes
 ```
@@ -63,6 +72,8 @@ classDiagram
 *   **`PlayerRewardModel`**
     *   유저가 보유한 모든 재화(Point, SeasonPoint, Credit 등)의 잔액을 캡슐화 관리하는 순수 C# 도메인 모델(POCO)입니다.
     *   데이터의 증가(`AddCurrency`) 및 차감(`TrySpendCurrency`)의 무결성 검증을 책임집니다.
+*   **`EventPointManager`**
+    *   `PlayerRewardModel`을 감싸서 외부 시스템(StageManager 등)에 포인트("Point") 적립, 소비, 조회 기능을 하드코딩 문자열 노출 없이 제공하는 비즈니스 레이어 헬퍼입니다.
 *   **`GeneralQuestReward`**
     *   보상 수령 명령이 실행될 때 `PlayerRewardModel`에 접근하여, 지정된 재화 코드와 수량만큼 화폐를 더해주는 보상 전략 구현체입니다.
 *   **`CurrencyHUDViewModel`**
@@ -72,7 +83,8 @@ classDiagram
 
 ## 3. 동작 흐름 (Data Flow)
 
-보상을 수령하여 포인트 재화 잔액이 올라가고 상단 재화 표시가 변경되는 일련의 데이터 흐름입니다.
+### 3.1. 퀘스트 보상 수령을 통한 포인트 획득 흐름
+보상 수령 명령이 호출되어 범용 보상 객체가 `PlayerRewardModel`에 직접 재화를 적립하고 저장하는 흐름입니다.
 
 ```mermaid
 sequenceDiagram
@@ -99,6 +111,36 @@ sequenceDiagram
     HudView->>HudView: 상단 UI의 텍스트 수치 갱신 (예: 50 -> 100)
 ```
 
+### 3.2. 인게임 시스템에서의 직접 포인트 적립 흐름 (EventPointManager 경유)
+인게임 콘텐츠(StageManager 등)에서 마술 문자열 `"Point"` 노출 없이 안전하게 포인트를 획득 및 세이브에 반영하는 흐름입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant SM as StageManager (인게임)
+    participant EPM as EventPointManager
+    participant Model as PlayerRewardModel
+    participant Save as ISaveSystem (Decorator)
+    participant HudVM as CurrencyHUDViewModel
+    participant HudView as CurrencyHUDView
+
+    SM->>EPM: AddPoint(15)
+    activate EPM
+    EPM->>Model: AddCurrency("Point", 15)
+    activate Model
+    Note over Model: balances["Point"] 수치 15 가산
+    deactivate Model
+    deactivate EPM
+    
+    Note over SM: (포인트 변동 시 세이브 데코레이터를 통해 저장 수행)
+    SM->>Save: SaveRewardStateAsync(Model)
+    Save-->>SM: 비동기 세이브 완료 회신
+    
+    SM->>HudVM: NotifyCurrencyChanged("Point", newBalance)
+    HudVM->>HudView: OnCurrencyChanged Action 브로드캐스트
+    HudView->>HudView: 상단 UI의 텍스트 수치 갱신
+```
+
 ---
 
 ## 4. 확장성 및 OCP
@@ -107,3 +149,5 @@ sequenceDiagram
     *   데이터 테이블(JSON)의 보상 정적 정의 파트에서 화폐 식별 문자열(예: `"GuildCoin"`)로 지정하기만 하면 됩니다.
     *   `PlayerRewardModel`은 내부적으로 `string`-`int` 딕셔너리로 잔액을 관리하므로 C# 코드 추가나 스키마 수정 없이도 새로운 포인트 체계를 즉시 누적 및 차감하여 활용할 수 있습니다.
     *   UI 상단 HUD에 추가된 화폐를 바인딩하고 싶을 경우, `CurrencyHUDView`에서 갱신을 원하는 화폐 식별자를 바인딩하고 `NotifyCurrencyChanged`에 체이닝해주는 것으로 코드 변화를 최소화할 수 있습니다.
+*   **하드코딩 및 데이터 결합성 방지 (EventPointManager)**:
+    *   기본적으로 딕셔너리에 문자열 키로 저장하지만, 인게임에서 가장 자주 쓰이는 핵심 화폐인 `"Point"`에 대해서는 `EventPointManager` 래퍼 클래스를 사용하여 오타 및 직접적인 데이터 수정을 방지하는 비즈니스 가드를 구현하였습니다.

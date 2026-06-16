@@ -67,15 +67,19 @@ classDiagram
 *   **설계 결정**: 모든 재화 수량 변수를 제거하고 `Dictionary<string, int> m_currencies`로 재화 저장을 일원화했습니다.
 *   **JsonUtility 직렬화 및 하위 호환성 해결**: Unity 내장 `JsonUtility`가 순수 딕셔너리를 직렬화하지 못하는 기술적 한계를 극복하기 위해 `ISerializationCallbackReceiver`를 구현하여 직렬화용 `List<CurrencyEntry>`와 동적 동기화되도록 설계했습니다. 또한, 기존 유저 세이브 데이터의 `m_totalExp` 등 레거시 JSON 변수들을 역직렬화 도중에 안전하게 흡수하는 `MigrateLegacyCurrency` 복구 로직을 구현하여 데이터 호환성 100%를 보장했습니다.
 
-### 2.2. Type Object 패턴을 통한 이넘(Enum) 결합도 해소
+### 2.2. 데이터 결합성 완화 및 마술 문자열 방지를 위한 EventPointManager 도입
+*   **고려 사항**: `PlayerRewardModel`이 `"Point"` 문자열 키를 기반으로 포인트를 관리하므로, 인게임 컨텍스트(예: `StageManager` 등)에서 직접 포인트를 가산하거나 차감할 때 마술 문자열 `"Point"`를 오타 없이 반복 호출해야 하는 잠재적 결함 위험이 존재했습니다.
+*   **설계 결정**: `PlayerRewardModel`을 내부적으로 위임받아 포인트 트랜잭션을 전담하는 `EventPointManager` 순수 POCO 헬퍼 클래스를 구현했습니다. 이를 통해 `"Point"` 상수를 내장하여 마술 문자열의 외부 노출을 원천적으로 차단하고, `AddPoint(amount)` 및 `TrySpendPoint(amount)` 등 안전하고 직관적인 비즈니스 인터페이스만을 외부에 노출시켜 모듈 간의 결합도를 획기적으로 완화했습니다.
+
+### 2.3. Type Object 패턴을 통한 이넘(Enum) 결합도 해소
 *   **고려 사항**: 하드코딩된 이넘(`ConditionType`, `RewardType`)은 확장 시 코드 및 에디터 직렬화 정보를 훼손할 위험이 있었습니다.
 *   **설계 결정**: 직렬화 데이터 에셋인 `ConditionTypeSO`/`RewardTypeSO` 및 전체 목록을 관리하는 `RegistrySO`를 활용하는 **Type Object 패턴**을 적용했습니다. 새로운 보상이나 조건 타입 추가 시, 코드를 고치고 에디터를 재빌드할 필요 없이 프로젝트 에셋 뷰에서 데이터 에셋 파일(`*.asset`)을 하나 생성하여 레지스트리에 링크해주는 것만으로 OCP 확장이 즉각적으로 완료됩니다.
 
-### 2.3. Awaitable 기반의 Zero-Allocation 비동기 UI 연출
+### 2.4. Awaitable 기반의 Zero-Allocation 비동기 UI 연출
 *   **고려 사항**: 기존의 `IEnumerator` 기반 코루틴은 매 프레임 프레임 지연 대기 시(`new WaitForEndOfFrame()`) 가비지(GC) 메모리 할당을 대량으로 유발하고, 씬이 전환되거나 UI가 도중에 파괴될 때 비동기 오작동 예외를 처리하기 어려웠습니다.
 *   **설계 결정**: Unity 6 표준인 `Awaitable` 기법을 전면 적용하고 `CancellationToken`을 적극 도입했습니다. UI 생명주기(`OnDestroy`)와 완벽히 연동시켜 중복 호출이나 씬 전환 시 비동기 연출을 즉각 취소(Cancel)하도록 제어하여 안정성을 극대화하고 가비지 없는 쾌적한 런타임을 제공합니다.
 
-### 2.4. Zero-Allocation 기반의 고성능 EventSystem 및 캐싱 기작
+### 2.5. Zero-Allocation 기반의 고성능 EventSystem 및 캐싱 기작
 *   **고려 사항**: 매 프레임 혹은 UI 갱신 시마다 `EventModel`에서 활성 이벤트 목록을 매번 `List<EventProgressModel>`의 형태로 인스턴스를 동적 할당하여 반환할 경우, 모바일 기기와 같이 리소스가 제한된 환경에서 가비지 컬렉션(GC) 스파이크로 인한 프레임 드랍을 유발할 우려가 있었습니다.
 *   **설계 결정**:
     *   **Non-Alloc 버퍼 수집 기작**: `EventModel`에 `GetActiveEventsNonAlloc(List<EventProgressModel> results)` 메서드를 구현하여 런타임에 리스트를 새로 생성하지 않고, 외부에서 주입받은 버퍼 리스트에 활성화된 이벤트를 캐싱/복사하여 채워 넣는 구조로 변경했습니다.
@@ -149,6 +153,14 @@ classDiagram
         -NormalizeCurrencyKey(string) string
         -MigrateLegacyCurrency(string, ref int)
     }
+
+    class EventPointManager {
+        +POINT_KEY: string
+        -m_playerReward: PlayerRewardModel
+        +AddPoint(int)
+        +TrySpendPoint(int) bool
+        +GetPointBalance() int
+    }
     
     class EventProgressModel {
         +eventId: string
@@ -209,4 +221,5 @@ classDiagram
     
     IQuestCondition --> QuestProgressModel : Evaluates & Updates
     IQuestReward ..> PlayerRewardModel : Invokes AddCurrency
+    EventPointManager --> PlayerRewardModel : Delegates & Wraps
 ```

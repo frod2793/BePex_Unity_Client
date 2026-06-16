@@ -1921,6 +1921,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BePex.EventSystem.Infrastructure.EventAdminSceneInitializer
   m_adminView: {fileID: 1371623293}
+  m_conditionTypeRegistry: {fileID: 11400000, guid: fbfc8cbf793134149a8b23787de34f1a, type: 2}
+  m_rewardTypeRegistry: {fileID: 11400000, guid: 9925d149daf474b7b86883645303c942, type: 2}
   m_eventJsonAddress: EventTableJson
 --- !u!1 &163754284
 GameObject:

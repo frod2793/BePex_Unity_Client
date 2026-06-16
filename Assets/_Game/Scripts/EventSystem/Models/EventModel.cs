@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.Data;
@@ -127,11 +128,11 @@ namespace BePex.EventSystem.Models
         }
 
         /// <summary>
-        /// [기능]: 활성화된 모든 이벤트 목록 중 현재 시간에 유효한 이벤트만 필터링하여 반환합니다.
+        /// [기능]: 활성화된 모든 이벤트 목록 중 현재 시간에 유효한 이벤트만 필터링하여 반환합니다. DTO의 DateTime 파싱 캐싱 헬퍼를 활용해 성능을 최적화합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 기간 만료 체크 필터링 로직 추가 및 갱신
+        /// [수정 내용]: DTO 날짜 캐싱 헬퍼를 사용하도록 변경하여 반복 파싱 부하 제거
         /// </summary>
         public List<EventDefinitionDTO> GetActiveEvents()
         {
@@ -145,19 +146,25 @@ namespace BePex.EventSystem.Models
             for (int i = 0; i < m_activeEvents.Count; i++)
             {
                 var evt = m_activeEvents[i];
+                if (evt == null)
+                {
+                    continue;
+                }
                 bool isValid = true;
 
-                if (!string.IsNullOrEmpty(evt.startDate) && DateTime.TryParse(evt.startDate, out DateTime startDt))
+                var startDt = evt.GetStartDateTime();
+                if (startDt.HasValue)
                 {
-                    if (currentTime < startDt)
+                    if (currentTime < startDt.Value)
                     {
                         isValid = false;
                     }
                 }
 
-                if (!string.IsNullOrEmpty(evt.endDate) && DateTime.TryParse(evt.endDate, out DateTime endDt))
+                var endDt = evt.GetEndDateTime();
+                if (endDt.HasValue)
                 {
-                    if (currentTime >= endDt.Date.AddDays(1))
+                    if (currentTime >= endDt.Value.Date.AddDays(1))
                     {
                         isValid = false;
                     }
@@ -215,66 +222,24 @@ namespace BePex.EventSystem.Models
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: questId 매개변수 도입 및 퀘스트 리스트 순회 갱신 처리
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable Debug_AddProgressAsync(string eventId, string questId, int amount, ISaveSystem saveSystem)
+        public async Awaitable Debug_AddProgressAsync(string eventId, string questId, int amount, ISaveSystem saveSystem, CancellationToken cancellationToken = default)
         {
             if (saveSystem == null)
             {
                 return;
             }
 
-            var progress = await saveSystem.LoadProgressAsync(eventId);
+            var progress = await saveSystem.LoadProgressAsync(eventId, cancellationToken);
             if (progress == null)
             {
                 return;
             }
 
-            QuestProgressModel targetQuest = null;
-            if (progress.quests != null)
-            {
-                for (int i = 0; i < progress.quests.Count; i++)
-                {
-                    if (progress.quests[i].questId == questId)
-                    {
-                        targetQuest = progress.quests[i];
-                        break;
-                    }
-                }
-            }
+            ApplyProgressCalculation(eventId, questId, amount, progress);
 
-            if (targetQuest == null)
-            {
-                targetQuest = new QuestProgressModel
-                {
-                    questId = questId,
-                    currentProgress = 0,
-                    isCompleted = false,
-                    isRewardClaimed = false,
-                    lastUpdatedTicks = 0
-                };
-                if (progress.quests == null)
-                {
-                    progress.quests = new List<QuestProgressModel>();
-                }
-                progress.quests.Add(targetQuest);
-            }
-
-            var cond = GetCondition(eventId, questId);
-            if (cond != null && !cond.CanAddProgress(progress))
-            {
-                return;
-            }
-
-            targetQuest.currentProgress += amount;
-            targetQuest.lastUpdatedTicks = m_timeProvider != null ? m_timeProvider.GetCurrentTime().Ticks : DateTime.Now.Ticks;
-
-            if (cond != null && targetQuest.currentProgress >= cond.GetTargetValue())
-            {
-                targetQuest.isCompleted = true;
-            }
-
-            await saveSystem.SaveProgressAsync(eventId, progress);
+            await saveSystem.SaveProgressAsync(eventId, progress, cancellationToken);
             OnEventProgressChanged?.Invoke(eventId);
         }
 
@@ -283,30 +248,22 @@ namespace BePex.EventSystem.Models
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: questId 단위 개별 보상 수령 로직 신규 구현
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<bool> ClaimRewardAsync(string eventId, string questId, ISaveSystem saveSystem, PlayerRewardModel playerReward)
+        public async Awaitable<bool> ClaimRewardAsync(string eventId, string questId, ISaveSystem saveSystem, PlayerRewardModel playerReward, CancellationToken cancellationToken = default)
         {
             if (saveSystem == null || playerReward == null)
             {
                 return false;
             }
 
-            var progress = await saveSystem.LoadProgressAsync(eventId);
+            var progress = await saveSystem.LoadProgressAsync(eventId, cancellationToken);
             if (progress == null || progress.quests == null)
             {
                 return false;
             }
 
-            QuestProgressModel targetQuest = null;
-            for (int i = 0; i < progress.quests.Count; i++)
-            {
-                if (progress.quests[i].questId == questId)
-                {
-                    targetQuest = progress.quests[i];
-                    break;
-                }
-            }
+            progress.TryGetQuestProgress(questId, out QuestProgressModel targetQuest);
 
             if (targetQuest == null || targetQuest.isCompleted == false || targetQuest.isRewardClaimed == true)
             {
@@ -331,7 +288,7 @@ namespace BePex.EventSystem.Models
             targetQuest.isRewardClaimed = true;
             
             // 두 세이브 호출을 Batch 세이브 단일 호출로 묶어 트랜잭션 보장
-            await saveSystem.SaveBatchAsync(eventId, progress, playerReward);
+            await saveSystem.SaveBatchAsync(eventId, progress, playerReward, cancellationToken);
 
             OnEventRewardClaimed?.Invoke(eventId);
             return true;
@@ -342,16 +299,16 @@ namespace BePex.EventSystem.Models
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: SaveBatchAsync 단일 호출 적용
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<bool> ClaimAllRewardsAsync(string eventId, ISaveSystem saveSystem, PlayerRewardModel playerReward)
+        public async Awaitable<bool> ClaimAllRewardsAsync(string eventId, ISaveSystem saveSystem, PlayerRewardModel playerReward, CancellationToken cancellationToken = default)
         {
             if (saveSystem == null || playerReward == null)
             {
                 return false;
             }
 
-            var progress = await saveSystem.LoadProgressAsync(eventId);
+            var progress = await saveSystem.LoadProgressAsync(eventId, cancellationToken);
             if (progress == null || progress.quests == null)
             {
                 return false;
@@ -386,7 +343,7 @@ namespace BePex.EventSystem.Models
             if (claimedAny)
             {
                 // 두 세이브 호출을 Batch 세이브 단일 호출로 묶어 트랜잭션 보장
-                await saveSystem.SaveBatchAsync(eventId, progress, playerReward);
+                await saveSystem.SaveBatchAsync(eventId, progress, playerReward, cancellationToken);
                 OnEventRewardClaimed?.Invoke(eventId);
                 return true;
             }
@@ -399,27 +356,26 @@ namespace BePex.EventSystem.Models
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 신설
+        /// [수정 내용]: ApplyProgressCalculation 헬퍼를 도입하여 중복 비즈니스 로직 제거
         /// </summary>
         public void Debug_AddProgressNoSave(string eventId, string questId, int amount, EventProgressModel progress)
+        {
+            ApplyProgressCalculation(eventId, questId, amount, progress);
+        }
+
+        /// <summary>
+        /// [기능]: 지정된 이벤트 진척도 모델 내 특정 퀘스트 진행도 데이터의 검색/생성, CanAddProgress 검사, 진척도 증가, 시간 기록, 완료 도달 판정을 일괄 처리합니다.
+        /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// </summary>
+        private void ApplyProgressCalculation(string eventId, string questId, int amount, EventProgressModel progress)
         {
             if (progress == null)
             {
                 return;
             }
 
-            QuestProgressModel targetQuest = null;
-            if (progress.quests != null)
-            {
-                for (int i = 0; i < progress.quests.Count; i++)
-                {
-                    if (progress.quests[i].questId == questId)
-                    {
-                        targetQuest = progress.quests[i];
-                        break;
-                    }
-                }
-            }
+            progress.TryGetQuestProgress(questId, out QuestProgressModel targetQuest);
 
             if (targetQuest == null)
             {

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace BePex.EventSystem.Models
 {
@@ -9,11 +11,11 @@ namespace BePex.EventSystem.Models
     /// [작성자]: 윤승종
     /// </summary>
     [Serializable]
-    public class PlayerRewardModel : ISerializationCallbackReceiver
+    public class PlayerRewardModel
     {
         #region 내부 구조체
         /// <summary>
-        /// [기능]: Unity JsonUtility 직렬화 지원을 위한 Key-Value 엔트리 구조체.
+        /// [기능]: Unity JsonUtility 직렬화 지원을 위한 Key-Value 엔트리 구조체 (레거시 하위 호환용).
         /// [작성자]: 윤승종
         /// </summary>
         [Serializable]
@@ -25,29 +27,63 @@ namespace BePex.EventSystem.Models
         #endregion
 
         #region 데이터 멤버
+        [JsonProperty("claimedEventIds")]
         [SerializeField] private List<string> m_claimedEventIds;
         
-        // Unity JsonUtility 직렬화 대상 가변 리스트
+        // Unity JsonUtility 직렬화 대상 가변 리스트 (레거시 세이브 파일 파싱용)
+        [JsonProperty("m_currenciesList")]
         [SerializeField] private List<CurrencyEntry> m_currenciesList;
 
         // 런타임 고속 조회 및 유연성 보장을 위한 딕셔너리
-        private Dictionary<string, int> m_currencies;
+        private Dictionary<string, int> m_currencies = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         // [하위 호환성 유지용 임시 필드]
+        [JsonProperty("m_totalExp")]
         [SerializeField] private int m_totalExp;
+        [JsonProperty("m_totalTickets")]
         [SerializeField] private int m_totalTickets;
+        [JsonProperty("m_totalPoints")]
         [SerializeField] private int m_totalPoints;
+        [JsonProperty("m_totalSeasonPoints")]
         [SerializeField] private int m_totalSeasonPoints;
+        [JsonProperty("m_totalCredits")]
         [SerializeField] private int m_totalCredits;
         #endregion
 
         #region 프로퍼티 (호환성 제공)
+        [JsonIgnore]
         public List<string> claimedEventIds => m_claimedEventIds;
+        [JsonIgnore]
         public int totalExp => GetCurrencyAmount("Exp");
+        [JsonIgnore]
         public int totalTickets => GetCurrencyAmount("Ticket");
+        [JsonIgnore]
         public int totalPoints => GetCurrencyAmount("Point");
+        [JsonIgnore]
         public int totalSeasonPoints => GetCurrencyAmount("SeasonPoint");
-        public int totalCredits => GetCurrencyAmount("CreditReword");
+        [JsonIgnore]
+        public int totalCredits => GetCurrencyAmount("CreditReward");
+
+        /// <summary>
+        /// [기능]: Newtonsoft.Json 직렬화/역직렬화를 직접 수납하기 위한 딕셔너리 연계 프로퍼티. 대소문자 무시 속성을 상시 동기화합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        [JsonProperty("currencies")]
+        public Dictionary<string, int> Currencies
+        {
+            get => m_currencies;
+            set
+            {
+                if (value != null)
+                {
+                    m_currencies = new Dictionary<string, int>(value, StringComparer.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    m_currencies = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                }
+            }
+        }
         #endregion
 
         #region 초기화
@@ -63,52 +99,59 @@ namespace BePex.EventSystem.Models
         }
         #endregion
 
-        #region 직렬화 콜백 (Serialization Callbacks)
+        #region 직렬화 콜백 (Newtonsoft.Json OnDeserialized)
         /// <summary>
-        /// [기능]: 직렬화 직전 딕셔너리의 최신 상태를 직렬화 가능한 리스트로 동기화합니다.
+        /// [기능]: 역직렬화 직후 구버전 세이브 리스트 데이터를 딕셔너리로 복구하고, 레거시 필드들의 호환 마이그레이션을 자동 처리합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-16
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: ISerializationCallbackReceiver 구현에 따른 동기화
         /// </summary>
-        public void OnBeforeSerialize()
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
         {
-            m_currenciesList.Clear();
-            foreach (var pair in m_currencies)
+            if (m_currencies == null)
             {
-                m_currenciesList.Add(new CurrencyEntry { key = pair.Key, value = pair.Value });
-            }
-        }
-
-        /// <summary>
-        /// [기능]: 역직렬화 직후 리스트 데이터를 딕셔너리로 마이그레이션하고, 구버전 필드의 호환성 마이그레이션을 처리합니다.
-        /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-16
-        /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 구버전 데이터 복구를 위한 호환성 마이그레이션 포함
-        /// </summary>
-        public void OnAfterDeserialize()
-        {
-            m_currencies = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < m_currenciesList.Count; i++)
-            {
-                string normKey = NormalizeCurrencyKey(m_currenciesList[i].key);
-                if (m_currencies.ContainsKey(normKey))
-                {
-                    m_currencies[normKey] += m_currenciesList[i].value;
-                }
-                else
-                {
-                    m_currencies[normKey] = m_currenciesList[i].value;
-                }
+                m_currencies = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             }
 
-            // [Legacy Migration] 구버전 세이브 복구 처리
+            // 1. 구버전 m_currenciesList 리스트 세이브 데이터를 딕셔너리로 마이그레이션
+            if (m_currenciesList != null && m_currenciesList.Count > 0)
+            {
+                for (int i = 0; i < m_currenciesList.Count; i++)
+                {
+                    string normKey = NormalizeCurrencyKey(m_currenciesList[i].key);
+                    if (m_currencies.ContainsKey(normKey))
+                    {
+                        m_currencies[normKey] += m_currenciesList[i].value;
+                    }
+                    else
+                    {
+                        m_currencies[normKey] = m_currenciesList[i].value;
+                    }
+                }
+                m_currenciesList.Clear();
+            }
+
+            // 2. [Legacy Migration] 구버전 단일 변수 세이브 복구 처리
             MigrateLegacyCurrency("Exp", ref m_totalExp);
             MigrateLegacyCurrency("Ticket", ref m_totalTickets);
             MigrateLegacyCurrency("Point", ref m_totalPoints);
             MigrateLegacyCurrency("SeasonPoint", ref m_totalSeasonPoints);
-            MigrateLegacyCurrency("CreditReword", ref m_totalCredits);
+            MigrateLegacyCurrency("CreditReward", ref m_totalCredits);
+
+            // 3. [Modernization Migration] "CreditReword" 레거시 오타 키가 딕셔너리에 존재하는 경우 "CreditReward"로 병합 및 현대화
+            if (m_currencies.TryGetValue("CreditReword", out int legacyAmount))
+            {
+                if (m_currencies.ContainsKey("CreditReward"))
+                {
+                    m_currencies["CreditReward"] += legacyAmount;
+                }
+                else
+                {
+                    m_currencies["CreditReward"] = legacyAmount;
+                }
+                m_currencies.Remove("CreditReword");
+
+                Debug.Log($"[PlayerRewardModel] 레거시 재화 데이터('CreditReword')를 현대적인 포맷('CreditReward')으로 변환 및 통합 완료했습니다. (합산된 금액: {legacyAmount})");
+            }
         }
         #endregion
 
@@ -159,9 +202,10 @@ namespace BePex.EventSystem.Models
                 return typeName;
             }
 
-            if (typeName.Equals("Credit", StringComparison.OrdinalIgnoreCase))
+            if (typeName.Equals("Credit", StringComparison.OrdinalIgnoreCase) || 
+                typeName.Equals("CreditReword", StringComparison.OrdinalIgnoreCase))
             {
-                return "CreditReword";
+                return "CreditReward";
             }
 
             return typeName;

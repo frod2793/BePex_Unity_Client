@@ -96,12 +96,22 @@ namespace BePex.EventSystem.ViewModelsDebug
         /// [마지막 수정 작성자]: 윤승종
         /// [수정 내용]: 타임 시뮬레이션 기능 신규 추가
         /// </summary>
-        public void SimulateTimeOffset(int days)
+        public async Awaitable SimulateTimeOffsetAsync(int days)
         {
             if (m_timeProvider is BePex.EventSystem.Infrastructure.DebugTimeProvider debugTime)
             {
-                debugTime.AddDays(days);
-                m_eventModel?.Reload();
+                for (int d = 0; d < days; d++)
+                {
+                    // 1. 가상 시간 1일 증가 및 이벤트 테이블 리로드
+                    debugTime.AddDays(1);
+                    if (m_eventModel != null)
+                    {
+                        m_eventModel.Reload();
+                    }
+
+                    // 2. 가상 출석체크 행동 모의 연동
+                    await SimulateAttendanceInternalAsync();
+                }
             }
         }
 
@@ -117,7 +127,10 @@ namespace BePex.EventSystem.ViewModelsDebug
             if (m_timeProvider is BePex.EventSystem.Infrastructure.DebugTimeProvider debugTime)
             {
                 debugTime.ResetOffset();
-                m_eventModel?.Reload();
+                if (m_eventModel != null)
+                {
+                    m_eventModel.Reload();
+                }
             }
         }
 
@@ -138,7 +151,11 @@ namespace BePex.EventSystem.ViewModelsDebug
                 {
                     if (types[i] != null && !string.IsNullOrEmpty(types[i].TypeName))
                     {
-                        validNames.Add(types[i].TypeName);
+                        // 출석체크(Attendance)는 날짜 추가 버튼과 통합하므로 동적 리스트 버튼 생성에서 제외
+                        if (types[i].TypeName != "Attendance")
+                        {
+                            validNames.Add(types[i].TypeName);
+                        }
                     }
                 }
                 return validNames.ToArray();
@@ -155,16 +172,20 @@ namespace BePex.EventSystem.ViewModelsDebug
         /// </summary>
         public async Awaitable SimulateActionAsync(string actionType)
         {
-            #region Attendance 시뮬레이션 전용 자동 시간 가산
             if (actionType == "Attendance")
             {
+                // 테스트 코드나 호환성을 위해 직접 SimulateActionAsync("Attendance")를 부를 경우의 예외 처리
                 if (m_timeProvider is BePex.EventSystem.Infrastructure.DebugTimeProvider debugTime)
                 {
                     debugTime.AddDays(1);
-                    m_eventModel?.Reload();
+                    if (m_eventModel != null)
+                    {
+                        m_eventModel.Reload();
+                    }
                 }
+                await SimulateAttendanceInternalAsync();
+                return;
             }
-            #endregion
 
             var events = GetActiveEvents();
             for (int i = 0; i < events.Count; i++)
@@ -192,6 +213,45 @@ namespace BePex.EventSystem.ViewModelsDebug
                     {
                         await m_saveSystem.SaveProgressAsync(evt.eventId, progress);
                         m_eventModel.TriggerProgressChanged(evt.eventId); // 변경 사항 UI 일제 전파
+                    }
+                }
+            }
+
+            if (m_hudViewModel != null)
+            {
+                m_hudViewModel.NotifyCurrencyChanged();
+            }
+        }
+
+        /// <summary>
+        /// [기능]: 가상 시간의 직접 가산 처리 없이 활성화된 출석체크(Attendance) 퀘스트의 진행도를 안전하게 1씩 가산하는 내부 비동기 헬퍼 메서드.
+        /// [작성자]: 윤승종
+        /// </summary>
+        private async Awaitable SimulateAttendanceInternalAsync()
+        {
+            var events = GetActiveEvents();
+            for (int i = 0; i < events.Count; i++)
+            {
+                var evt = events[i];
+                if (evt.quests != null)
+                {
+                    var progress = await m_saveSystem.LoadProgressAsync(evt.eventId);
+                    bool isAnyProgressAdded = false;
+
+                    for (int j = 0; j < evt.quests.Count; j++)
+                    {
+                        var quest = evt.quests[j];
+                        if (quest.condition != null && quest.condition.conditionType == "Attendance")
+                        {
+                            m_eventModel.Debug_AddProgressNoSave(evt.eventId, quest.questId, 1, progress);
+                            isAnyProgressAdded = true;
+                        }
+                    }
+
+                    if (isAnyProgressAdded)
+                    {
+                        await m_saveSystem.SaveProgressAsync(evt.eventId, progress);
+                        m_eventModel.TriggerProgressChanged(evt.eventId); // 변경 사항 UI 전파
                     }
                 }
             }
@@ -269,7 +329,7 @@ namespace BePex.EventSystem.ViewModelsDebug
         {
             if (m_playerReward != null && m_saveSystem != null)
             {
-                m_playerReward.TrySpendCurrency("CreditReword", amount);
+                m_playerReward.TrySpendCurrency("CreditReward", amount);
                 await m_saveSystem.SaveRewardStateAsync(m_playerReward);
                 if (m_hudViewModel != null)
                 {

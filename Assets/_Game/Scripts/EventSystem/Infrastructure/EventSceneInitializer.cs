@@ -9,6 +9,7 @@ using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.ViewModelsDebug;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.DTOs;
+using System.Threading;
 
 namespace BePex.EventSystem.Infrastructure
 {
@@ -36,10 +37,43 @@ namespace BePex.EventSystem.Infrastructure
         [SerializeField] private string m_eventJsonAddress = "EventTableJson";
         #endregion
 
+        #region 내부 필드 (Private Fields)
+        private CancellationTokenSource m_cts;
+        #endregion
+
         #region 유니티 생명주기
+        private void Awake()
+        {
+            m_cts = new CancellationTokenSource();
+        }
+
         private async void Start()
         {
-            await InitializeAsync();
+            try
+            {
+                if (m_cts != null)
+                {
+                    await InitializeAsync(m_cts.Token);
+                }
+            }
+            catch (System.OperationCanceledException)
+            {
+                Debug.Log("[EventSceneInitializer] 씬 초기화 프로세스가 정상적으로 취소되었습니다.");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[EventSceneInitializer] 초기화 도중 예외가 발생했습니다: {ex.Message}");
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (m_cts != null)
+            {
+                m_cts.Cancel();
+                m_cts.Dispose();
+                m_cts = null;
+            }
         }
         #endregion
 
@@ -49,19 +83,20 @@ namespace BePex.EventSystem.Infrastructure
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: QuestConditionFactory 및 QuestRewardFactory 사용으로 DI 조립 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 매개변수 도입 및 전달 연계
         /// </summary>
-        private async Awaitable InitializeAsync()
+        private async Awaitable InitializeAsync(CancellationToken cancellationToken)
         {
-            // 1단계: 디버그 옵션에 따른 저장 장치 및 시간 제공자 선택
-            ISaveSystem rawSaveSystem = (m_useDebugMode && m_debugView != null) 
-                ? new InMemorySaveSystem() 
-                : new JsonSaveSystem();
-            ISaveSystem saveSystem = new CachedSaveSystem(rawSaveSystem);
+            // 1단계: 저장 장치 및 시간 제공자 선택 (디버그 모드와 관계없이 JsonSaveSystem을 기본 사용하여 씬 재시작 시 상태 유지)
+            ISaveSystem rawSaveSystem = new JsonSaveSystem();
+            ISaveSystem cachedSaveSystem = new CachedSaveSystem(rawSaveSystem);
+            ISaveSystem saveSystem = new RetrySaveSystemDecorator(cachedSaveSystem);
                 
             ITimeProvider timeProvider = (m_useDebugMode && m_debugView != null)
                 ? new BePex.EventSystem.Infrastructure.DebugTimeProvider()
                 : new BePex.EventSystem.Infrastructure.SystemTimeProvider();
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             // 2단계: Addressables 기반 데이터 로딩 (JSON TextAsset)
             EventTableDTO eventTableDTO = null;
@@ -69,6 +104,8 @@ namespace BePex.EventSystem.Infrastructure
             {
                 var handle = Addressables.LoadAssetAsync<TextAsset>(m_eventJsonAddress);
                 TextAsset jsonAsset = await handle.Task;
+
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (jsonAsset != null)
                 {
@@ -87,7 +124,9 @@ namespace BePex.EventSystem.Infrastructure
             var rewFactory = new QuestRewardFactory();
 
             // 4단계: 비동기로 유저 누적 보상 정보 로드
-            var playerReward = await saveSystem.LoadRewardStateAsync();
+            var playerReward = await saveSystem.LoadRewardStateAsync(cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             // 5단계: 도메인 Domain Model 생성 
             var eventModel = new EventModel(eventTableDTO, condFactory, rewFactory, timeProvider);

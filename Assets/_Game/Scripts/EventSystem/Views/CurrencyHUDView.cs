@@ -16,6 +16,8 @@ namespace BePex.EventSystem.Views
         [SerializeField] private TextMeshProUGUI m_goldText;
         [SerializeField] private TextMeshProUGUI m_expText;
         [SerializeField] private TextMeshProUGUI m_ticketText;
+        [SerializeField] private TextMeshProUGUI m_seasonPointText;
+        [SerializeField] private TextMeshProUGUI m_creditText;
         #endregion
 
         #region 내부 필드
@@ -48,12 +50,18 @@ namespace BePex.EventSystem.Views
 
         #region UI 갱신
         /// <summary>
-        /// [기능]: 뷰모델로부터 최신 재화 상태를 얻어와 텍스트를 업데이트합니다.
+        /// [기능]: 뷰모델로부터 최신 재화 상태를 얻어와 5종 재화 전체 텍스트를 업데이트합니다.
         /// [작성자]: 윤승종
+        /// [수정 날짜]: 2026-06-16
+        /// [마지막 수정 작성자]: 윤승종
+        /// [수정 내용]: SeasonPoint 및 Credit 재화 추가 표기 반영
         /// </summary>
         private void RefreshUI()
         {
-            if (m_viewModel == null) return;
+            if (m_viewModel == null)
+            {
+                return;
+            }
 
             if (m_goldText != null)
             {
@@ -66,6 +74,14 @@ namespace BePex.EventSystem.Views
             if (m_ticketText != null)
             {
                 m_ticketText.text = m_viewModel.TotalTickets.ToString();
+            }
+            if (m_seasonPointText != null)
+            {
+                m_seasonPointText.text = m_viewModel.TotalSeasonPoints.ToString();
+            }
+            if (m_creditText != null)
+            {
+                m_creditText.text = m_viewModel.TotalCredits.ToString();
             }
         }
         #endregion

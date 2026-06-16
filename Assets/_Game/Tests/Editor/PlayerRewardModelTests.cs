@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using BePex.EventSystem.Models;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace BePex.EventSystem.Tests
 {
@@ -53,10 +54,10 @@ namespace BePex.EventSystem.Tests
             originalModel.AddCurrency("Gold", 250);
 
             // Act
-            string json = JsonUtility.ToJson(originalModel);
+            string json = JsonConvert.SerializeObject(originalModel, Formatting.Indented);
             Debug.Log($"[PlayerRewardModelTests] 직렬화된 JSON 문자열: {json}");
             
-            var restoredModel = JsonUtility.FromJson<PlayerRewardModel>(json);
+            var restoredModel = JsonConvert.DeserializeObject<PlayerRewardModel>(json);
 
             // Assert
             Assert.AreEqual(500, restoredModel.totalExp, "[PlayerRewardModelTests] 복원된 totalExp 값이 불일치합니다.");
@@ -85,8 +86,8 @@ namespace BePex.EventSystem.Tests
                                 "}";
 
             // Act
-            // JsonUtility.FromJson 실행 시 역직렬화 직후 OnAfterDeserialize 콜백이 실행되어 MigrateLegacyCurrency가 트리거되어야 함
-            var migratedModel = JsonUtility.FromJson<PlayerRewardModel>(legacyJson);
+            // JsonConvert.DeserializeObject 실행 시 역직렬화 직후 OnDeserialized 콜백이 실행되어 MigrateLegacyCurrency가 트리거되어야 함
+            var migratedModel = JsonConvert.DeserializeObject<PlayerRewardModel>(legacyJson);
 
             // Assert
             Assert.AreEqual(750, migratedModel.totalExp, "[PlayerRewardModelTests] 마이그레이션된 totalExp 값이 불일치합니다.");
@@ -101,7 +102,7 @@ namespace BePex.EventSystem.Tests
             Assert.AreEqual(8, balances["Ticket"], "[PlayerRewardModelTests] 마이그레이션 후 딕셔너리 내 Ticket 수치가 올바르지 않습니다.");
             Assert.AreEqual(120, balances["Point"], "[PlayerRewardModelTests] 마이그레이션 후 딕셔너리 내 Point 수치가 올바르지 않습니다.");
             Assert.AreEqual(40, balances["SeasonPoint"], "[PlayerRewardModelTests] 마이그레이션 후 딕셔너리 내 SeasonPoint 수치가 올바르지 않습니다.");
-            Assert.AreEqual(90, balances["CreditReword"], "[PlayerRewardModelTests] 마이그레이션 후 딕셔너리 내 CreditReword 수치가 올바르지 않습니다.");
+            Assert.AreEqual(90, balances["CreditReward"], "[PlayerRewardModelTests] 마이그레이션 후 딕셔너리 내 CreditReward 수치가 올바르지 않습니다.");
 
             Debug.Log("[PlayerRewardModelTests] 레거시 JSON 데이터로부터 신규 딕셔너리 마이그레이션 및 값 복구 성공!");
         }

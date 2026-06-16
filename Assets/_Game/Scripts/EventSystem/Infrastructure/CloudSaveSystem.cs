@@ -3,6 +3,8 @@ using UnityEngine.Networking;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.Models;
 using System.Text;
+using System.Threading;
+using Newtonsoft.Json;
 
 namespace BePex.EventSystem.Infrastructure
 {
@@ -36,20 +38,30 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 특정 이벤트 ID의 진행 상태를 서버에서 비동기로 조회합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId)
+        public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string url = $"{m_endpointUrl}/progress/{m_userId}/{eventId}";
             using (UnityWebRequest req = UnityWebRequest.Get(url))
             {
-                await req.SendWebRequest();
+                var operation = req.SendWebRequest();
+                while (!operation.isDone)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        req.Abort();
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                    await Awaitable.NextFrameAsync();
+                }
 
                 if (req.result == UnityWebRequest.Result.Success)
                 {
-                    return JsonUtility.FromJson<EventProgressModel>(req.downloadHandler.text);
+                    return JsonConvert.DeserializeObject<EventProgressModel>(req.downloadHandler.text);
                 }
                 
                 Debug.LogWarning($"[CloudSaveSystem] 이벤트 {eventId} 진행도 로드 실패. 빈 인스턴스를 반환합니다. Error: {req.error}");
@@ -60,14 +72,15 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 특정 이벤트의 진행 상태를 서버에 비동기로 전송(저장)합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress)
+        public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string url = $"{m_endpointUrl}/progress/{m_userId}/{eventId}";
-            string json = JsonUtility.ToJson(progress);
+            string json = JsonConvert.SerializeObject(progress);
             
             using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
             {
@@ -76,7 +89,16 @@ namespace BePex.EventSystem.Infrastructure
                 req.downloadHandler = new DownloadHandlerBuffer();
                 req.SetRequestHeader("Content-Type", "application/json");
 
-                await req.SendWebRequest();
+                var operation = req.SendWebRequest();
+                while (!operation.isDone)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        req.Abort();
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                    await Awaitable.NextFrameAsync();
+                }
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
@@ -88,20 +110,30 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 플레이어의 누적 보상 현황을 서버에서 비동기로 조회합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<PlayerRewardModel> LoadRewardStateAsync()
+        public async Awaitable<PlayerRewardModel> LoadRewardStateAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string url = $"{m_endpointUrl}/rewards/{m_userId}";
             using (UnityWebRequest req = UnityWebRequest.Get(url))
             {
-                await req.SendWebRequest();
+                var operation = req.SendWebRequest();
+                while (!operation.isDone)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        req.Abort();
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                    await Awaitable.NextFrameAsync();
+                }
 
                 if (req.result == UnityWebRequest.Result.Success)
                 {
-                    return JsonUtility.FromJson<PlayerRewardModel>(req.downloadHandler.text);
+                    return JsonConvert.DeserializeObject<PlayerRewardModel>(req.downloadHandler.text);
                 }
 
                 Debug.LogWarning($"[CloudSaveSystem] 플레이어 보상 상태 로드 실패. 빈 인스턴스를 반환합니다. Error: {req.error}");
@@ -112,14 +144,15 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 플레이어의 누적 보상 현황을 서버에 비동기로 전송(저장)합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState)
+        public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string url = $"{m_endpointUrl}/rewards/{m_userId}";
-            string json = JsonUtility.ToJson(rewardState);
+            string json = JsonConvert.SerializeObject(rewardState);
             
             using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
             {
@@ -128,7 +161,16 @@ namespace BePex.EventSystem.Infrastructure
                 req.downloadHandler = new DownloadHandlerBuffer();
                 req.SetRequestHeader("Content-Type", "application/json");
 
-                await req.SendWebRequest();
+                var operation = req.SendWebRequest();
+                while (!operation.isDone)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        req.Abort();
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                    await Awaitable.NextFrameAsync();
+                }
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
@@ -140,17 +182,27 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 서버의 모든 사용자 관련 세이브 데이터를 초기화합니다. (테스트용)
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable ClearAllAsync()
+        public async Awaitable ClearAllAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string url = $"{m_endpointUrl}/clear/{m_userId}";
             using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
             {
                 req.downloadHandler = new DownloadHandlerBuffer();
-                await req.SendWebRequest();
+                var operation = req.SendWebRequest();
+                while (!operation.isDone)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        req.Abort();
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                    await Awaitable.NextFrameAsync();
+                }
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
@@ -168,14 +220,14 @@ namespace BePex.EventSystem.Infrastructure
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 신설 구현
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState)
+        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
         {
-            // 실제 상용 환경에서는 이 둘을 하나의 POST API 또는 멀티파트 바디로 합치거나 일괄 배치 트랜잭션 주소로 쏠 수 있습니다.
-            // 여기서는 인터페이스 구현 완성을 위해 안전하게 병렬 처리 또는 직렬 처리를 모사합니다.
-            await SaveProgressAsync(eventId, progress);
-            await SaveRewardStateAsync(rewardState);
+            cancellationToken.ThrowIfCancellationRequested();
+            await SaveProgressAsync(eventId, progress, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            await SaveRewardStateAsync(rewardState, cancellationToken);
         }
         #endregion
     }

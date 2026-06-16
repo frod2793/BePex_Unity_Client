@@ -4,6 +4,7 @@ using BePex.EventSystem.ViewModels;
 using BePex.EventSystem.DTOs;
 using TMPro;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace BePex.EventSystem.Views
 {
@@ -26,6 +27,7 @@ namespace BePex.EventSystem.Views
         private EventListViewModel m_listViewModel;
         private RewardPopupViewModel m_popupViewModel;
         private readonly List<EventQuestRowView> m_spawnedQuestRows = new List<EventQuestRowView>();
+        private CancellationTokenSource m_cts;
         #endregion
 
         #region 공개 메서드
@@ -80,6 +82,13 @@ namespace BePex.EventSystem.Views
             {
                 m_listViewModel.OnEventSelected -= func_OnEventSelected;
             }
+
+            if (m_cts != null)
+            {
+                m_cts.Cancel();
+                m_cts.Dispose();
+                m_cts = null;
+            }
         }
         #endregion
 
@@ -100,15 +109,29 @@ namespace BePex.EventSystem.Views
         }
 
         /// <summary>
-        /// [기능]: 비동기 상세 업데이트 연산을 감싸 동기 이벤트 핸들러 인터페이스 형식으로 반환합니다.
+        /// [기능]: 비동기 상세 업데이트 연산을 감싸 동기 이벤트 핸들러 인터페이스 형식으로 반환합니다. try-catch 예외 필터 가드를 통해 시스템 크래시를 방지합니다.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: 예외 처리 및 CancellationTokenSource 재발급 로직 연계
         /// </summary>
         private async void func_OnDetailUpdatedWrapper()
         {
-            await func_OnDetailUpdatedAsync();
+            if (m_cts != null)
+            {
+                m_cts.Cancel();
+                m_cts.Dispose();
+            }
+            m_cts = new CancellationTokenSource();
+
+            try
+            {
+                await func_OnDetailUpdatedAsync(m_cts.Token);
+            }
+            catch (System.Exception ex) when (!(ex is System.OperationCanceledException))
+            {
+                Debug.LogError($"[EventDetailView] 디테일 UI 비동기 갱신 중 예외가 발생했습니다: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -116,14 +139,16 @@ namespace BePex.EventSystem.Views
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 다중 퀘스트 리스트 인스턴싱 및 일괄 보상 상태 체크 구현
+        /// [수정 내용]: CancellationToken 취소 가드 및 토큰 지원 연계
         /// </summary>
-        public async Awaitable func_OnDetailUpdatedAsync()
+        public async Awaitable func_OnDetailUpdatedAsync(CancellationToken cancellationToken)
         {
             if (m_viewModel == null)
             {
                 return;
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             var def = m_viewModel.GetEventDefinition();
             if (def == null)
@@ -161,6 +186,8 @@ namespace BePex.EventSystem.Views
             {
                 for (int i = 0; i < def.quests.Count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     var quest = def.quests[i];
                     var rowInstance = Instantiate(m_questRowPrefab, m_questListContent);
                     if (rowInstance != null)
@@ -186,17 +213,24 @@ namespace BePex.EventSystem.Views
         }
 
         /// <summary>
-        /// [기능]: 사용자가 일괄 [보상 받기] 버튼을 클릭하였을 때 실행되는 UI Callback. 뷰모델에 일괄 수령을 요청합니다. func_ 접두사 준수.
+        /// [기능]: 사용자가 일괄 [보상 받기] 버튼을 클릭하였을 때 실행되는 UI Callback. 뷰모델에 일괄 수령을 요청합니다. try-catch로 예외를 관리합니다. func_ 접두사 준수.
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 작성
+        /// [수정 내용]: try-catch 예외 처리 추가
         /// </summary>
         public async void func_OnClaimAllButtonClick()
         {
-            if (m_viewModel != null)
+            try
             {
-                await m_viewModel.ClaimAllRewardsAsync();
+                if (m_viewModel != null)
+                {
+                    await m_viewModel.ClaimAllRewardsAsync();
+                }
+            }
+            catch (System.Exception ex) when (!(ex is System.OperationCanceledException))
+            {
+                Debug.LogError($"[EventDetailView] 일괄 보상 받기 실행 중 예외가 발생했습니다: {ex.Message}");
             }
         }
         #endregion

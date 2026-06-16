@@ -5,6 +5,7 @@ using BePex.EventSystem.DTOs;
 using BePex.EventSystem.Data;
 using UnityEngine.AddressableAssets;
 using System.IO;
+using System.Threading;
 
 namespace BePex.EventSystem.Infrastructure
 {
@@ -24,14 +25,47 @@ namespace BePex.EventSystem.Infrastructure
         [SerializeField] private string m_eventJsonAddress = "EventTableJson";
         #endregion
 
+        #region 내부 필드 (Private Fields)
+        private CancellationTokenSource m_cts;
+        #endregion
+
         #region 유니티 생명주기
+        private void Awake()
+        {
+            m_cts = new CancellationTokenSource();
+        }
+
         /// <summary>
         /// [기능]: 씬 기동 시 수동 비동기 초기화를 트리거합니다.
         /// [작성자]: 윤승종
         /// </summary>
         private async void Start()
         {
-            await InitializeAsync();
+            try
+            {
+                if (m_cts != null)
+                {
+                    await InitializeAsync(m_cts.Token);
+                }
+            }
+            catch (System.OperationCanceledException)
+            {
+                Debug.Log("[EventAdminSceneInitializer] 씬 초기화 프로세스가 정상적으로 취소되었습니다.");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[EventAdminSceneInitializer] 초기화 도중 예외가 발생했습니다: {ex.Message}");
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (m_cts != null)
+            {
+                m_cts.Cancel();
+                m_cts.Dispose();
+                m_cts = null;
+            }
         }
         #endregion
 
@@ -39,13 +73,15 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 데이터 파일(로컬 JSON 파일 또는 Addressables)을 로드하고 뷰와 뷰모델, 모킹 서비스를 인스턴싱 및 수동 DI 결합합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 매개변수 도입 및 전달 연계
         /// </summary>
-        private async Awaitable InitializeAsync()
+        private async Awaitable InitializeAsync(CancellationToken cancellationToken)
         {
             EventTableDTO eventTableDTO = null;
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             string localPath = Path.Combine(Application.dataPath, "_Game/Data/event_table.json");
             if (File.Exists(localPath))
@@ -69,6 +105,8 @@ namespace BePex.EventSystem.Infrastructure
                     {
                         var handle = Addressables.LoadAssetAsync<TextAsset>(m_eventJsonAddress);
                         TextAsset jsonAsset = await handle.Task;
+
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         if (jsonAsset != null)
                         {

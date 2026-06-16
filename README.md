@@ -50,7 +50,7 @@ flowchart TD
 - **EventModel**: 개별 이벤트 데이터(ID, 타입, 기간)와 달성 상태를 결합하여 상태 변화를 관리하는 비즈니스 도메인 모델.
 - **EventProgressModel**: 유저의 각 이벤트 달성 진행도를 디스크에 저장/복원하기 위한 래퍼 데이터 모델.
 - **QuestProgressModel**: 개별 퀘스트(미션)의 진행 수치, 완료 상태, 보상 수령 시점 등을 관리하는 POCO 데이터 모델.
-- **PlayerRewardModel**: 플레이어가 획득한 화폐/자산 데이터를 딕셔너리(`Dictionary<string, int>`) 구조로 캡슐화하고 안전한 가산/차감 API 및 구버전 데이터 호환 직렬화 수명주기를 제공하는 상태 모델.
+- **PlayerRewardModel**: 플레이어가 획득한 화폐/자산 데이터를 딕셔너리(`Dictionary<string, int>`) 구조로 캡슐화하고 안전한 가산/차감 API 및 Newtonsoft.Json의 `[OnDeserialized]` 역직렬화 수명주기를 활용한 구버전 세이브 호환 마이그레이션 기작을 탑재한 상태 모델.
 - **EventTableSO / EventDefinitionSO / ConditionDefinitionSO / RewardDefinitionSO / ConditionTypeSO / RewardTypeSO / ConditionTypeRegistrySO / RewardTypeRegistrySO**: 데이터 정의 및 에디터 직렬화, Type Object를 위한 스크립터블 오브젝트.
 - **EventTableDTO**: 전체 이벤트 테이블의 JSON 직렬화용 데이터 전송 객체.
 
@@ -90,7 +90,7 @@ flowchart TD
 #### 🏗️ G. Infrastructure (조립 및 입출력) 계층
 - **EventSceneInitializer / EventAdminSceneInitializer**: 각 씬의 의존성 결합을 담당하는 컴포지션 루트.
 - **MockFirebaseUploadService**: 로컬 가상 파일 업로드 시뮬레이터.
-- **JsonSaveSystem / InMemorySaveSystem / CachedSaveSystem**: 다양한 형태의 세이브/로드 인프라 및 최적화 데코레이터.
+- **JsonSaveSystem / InMemorySaveSystem / CachedSaveSystem / RetrySaveSystemDecorator**: 다양한 형태의 세이브/로드 인프라 및 지수 백오프 기반 재시도 최적화 데코레이터.
 - **SystemTimeProvider / DebugTimeProvider**: 시스템 시간 및 조작 가능한 테스트용 시간 구현체.
 
 #### 🛠️ H. Factories / Utils (보조) 계층
@@ -178,12 +178,26 @@ public class SpecialPackageQuestReward : BaseQuestReward
 ## 4. 📐 설계 설명
 
 ### 설계 시 고려 사항
-- **데이터 기반 OCP 극대화 (Data-driven OCP)**:
-  - 새로운 조건 유형이나 재화 타입 추가 시 컴파일과 C# 코딩을 원천 배제하고자 팩토리 내부의 폴백(`Fallback`) 라우팅을 설계했습니다. 이를 통해 라이브 서비스 중인 게임 서버의 DTO JSON 설정만 변경하여도 클라이언트 재빌드 없이 새로운 미션과 보상을 런타임에 동적으로 제공할 수 있습니다.
-- **Zero-Allocation Awaitable 비동기**:
-  - 유일한 비동기 연출부인 디버그 슬라이드 토글 등에 C# 코루틴 대신 유니티 6 네이티브 `Awaitable`을 적용하여 가비지를 유발하지 않는 고성능 구조를 확립했습니다. UI 소멸 시 `CancellationToken` 취소를 확실하게 연동하여 널 예외 위험을 봉쇄했습니다.
-- **세이브 데이터 하위 호환 마이그레이션**:
-  - `PlayerRewardModel` 내부 구조를 유연한 딕셔너리로 마이그레이션하면서도, 기기 디스크에 저장되어 있는 구버전 유저의 세이브 파일 속 필드 데이터를 유실 없이 승계할 수 있도록 `ISerializationCallbackReceiver` 역직렬화 가드를 탑재했습니다.
+- **비동기 안전성 및 취소 제어 (CancellationToken & Awaitable)**:
+  - 씬 전환 또는 UI 소멸 시 발생할 수 있는 메모리 누수 및 NullReferenceException을 차단하기 위해 `CancellationToken`을 저장소 및 이벤트 모델 전체에 적용했습니다.
+  - UI 뷰 컴포넌트의 비동기 연출부는 `Awaitable` 반환 구조로 변경하였고, 유니티 에디터 이벤트 콜백 최상위 진입점인 `async void` 내부를 `try-catch` 가드로 래핑하고 `OperationCanceledException`을 콘솔 창에서 억제하도록 예외 필터를 가설하여 안정성을 높였습니다.
+- **Newtonsoft.Json 도입을 통한 POCO 직렬화 현대화**:
+  - `PlayerRewardModel`에서 기존 유니티 `JsonUtility` 제한(Dictionary 직렬화 불가능)으로 인해 상속받던 `ISerializationCallbackReceiver` 및 수동 리스트 변환 필드를 모두 걷어내고, Newtonsoft.Json을 도입하여 `m_balances` 딕셔너리를 직접 직렬화하는 순수 POCO 구조로 현대화했습니다.
+  - `[OnDeserialized]` 역직렬화 수명 주기 콜백을 구현하여, 이전 버전의 평탄화된 세이브 데이터가 로드되는 경우에도 예외 없이 딕셔너리로 역직렬화 및 값 복구를 수행하는 하위 호환성 복구 마이그레이션을 탑재했습니다.
+  - `JsonSaveSystem` 및 `CloudSaveSystem` 역시 `Newtonsoft.Json.JsonConvert` API 기반으로 전면 교체하여 JSON 입출력 엔진을 일원화했습니다.
+- **CachedSaveSystem의 Awaitable Detached State 크래시 해결**:
+  - `UnityEngine.Awaitable` 객체는 가비지 컬렉션 최적화를 위해 내부적으로 풀링(Pooling)되며, 단 1회만 await할 수 있습니다. 이미 소멸했거나 다른 흐름에서 사용 중인 Awaitable을 중복 await하려고 하면 `Awaitable is in detached state` 예외가 발생합니다.
+  - 이를 해결하기 위해 기존 `m_writeLocks` 딕셔너리 기반 Awaitable 직접 캐싱 방식을 완전 제거하고, `HashSet<string> m_activeWrites` 락 상태 관리와 `Awaitable.NextFrameAsync(cancellationToken)` 프레임 단위 슬롯 폴링 방식을 도입하여 비동기 동시성 크래시를 원천 차단했습니다.
+- **중복 검색 연산 캡슐화**:
+  - `EventProgressModel` 내에 `TryGetQuestProgress(string questId, out QuestProgress progress)` 헬퍼 메서드를 신설하여 퀘스트 데이터 탐색 처리를 캡슐화했습니다.
+  - 기존 4개 클래스(`BaseQuestCondition`, `EventModel`, `EventDetailViewModel`, `EventListViewModel`)에 분산되어 있던 중복 `for`/`foreach` 퀘스트 ID 검색 루프를 신설된 헬퍼 호출 1줄로 통합 리팩토링했습니다.
+- **날짜 문자열 파싱 오버헤드 제거 (DateTime Caching)**:
+  - 이벤트 활성화 판정 시 매 프레임 혹은 이벤트 갱신 시점마다 발생하던 `DateTime.TryParse` 파싱 연산을 DTO 클래스 내의 Nullable 캐싱 필드로 대체하여 가비지 컬렉션(GC) 할당과 연산 부하를 차단했습니다.
+- **타이포 정정 및 현대화 마이그레이션**:
+  - 기존 `"CreditReword"` 타이포를 `"CreditReward"`로 정역학 정정하였습니다.
+  - 유저의 하위 호환성을 완벽하게 제공하기 위해 `PlayerRewardModel` 내 `[OnDeserialized]` 콜백 함수를 통해, 레거시 키 발견 시 자동으로 신규 키에 금액을 합산하고 디스크에 즉시 재기록하도록 현대화 마이그레이션 기작을 완수했습니다.
+- **원격 예외 회복력 확보 (Retry Save System Decorator)**:
+  - 데코레이터 패턴을 활용하여, 저장 실패 시 지수 백오프(Exponential Backoff) 알고리즘으로 비동기 재시도하는 `RetrySaveSystemDecorator`를 주입 조립하여 저장 안정성을 확보했습니다.
 
 ### 현재 구조의 한계와 개선 방향
 - **Pure DI의 조립 복잡도**:
@@ -194,11 +208,11 @@ public class SpecialPackageQuestReward : BaseQuestReward
 
 ## 5. ⏳ 작업 시간 (Time Log)
 
-- **총 작업 시간**: 35.5시간
-  - 설계 및 아키텍처 문서화: 9.0시간
-  - 이벤트 시스템 로직 및 OCP 개편: 12.5시간
-  - UI 연동 및 Awaitable 성능 개선: 8.0시간
-  - README 및 최종 결함 보완 테스트: 6.0시간
+- **총 작업 시간**: 48.5시간
+  - 설계 및 아키텍처 문서화: 12.0시간
+  - 이벤트 시스템 로직 및 OCP 개편: 15.5시간
+  - UI 연동 및 Awaitable 성능 개선: 10.0시간
+  - Newtonsoft.Json 현대화 및 비동기 크래시 보완 테스트: 11.0시간
 
 ---
 
@@ -206,8 +220,16 @@ public class SpecialPackageQuestReward : BaseQuestReward
 
 - **사용한 AI 도구**: Antigravity Agent (Gemini 3.5 Flash / Claude 3.5 Sonnet 계열)
 - **사용 범위**:
+  - Newtonsoft.Json 도입에 따른 `PlayerRewardModel` 딕셔너리 직접 직렬화 전환 및 `[OnDeserialized]` 하위 호환 복구 마이그레이션 적용.
+  - `EventProgressModel`의 questId 중복 검색 캡슐화(TryGetQuestProgress) 설계.
+  - `overrideReferences: true` 환경의 테스트 어셈블리 `.asmdef` 내 `Newtonsoft.Json.dll` precompiledReferences 참조 오류(CS0246) 해소.
+  - `CachedSaveSystem` 내 Awaitable detached state 크래시 버그 방지를 위한 HashSet 기반 프레임 대기 기작 적용.
   - `PlayerRewardModel` 딕셔너리 데이터 구조 OCP 리팩토링 및 `ISerializationCallbackReceiver` 직렬화 동기화 설계.
   - C# 깡통 클래스 12개 삭제에 대응하는 팩토리 폴백(Fallback) 라우팅 로직 개발.
   - `EventExtensionWindow` 소스 파일 선택적 빌드 제어 토글 추가.
+  - 비동기 라이프사이클 누수 방지를 위한 CancellationToken 전파 및 Awaitable 뷰 예외 가드 구현.
+  - `EventAdminViewModel` 클래스의 partial 구조 분할 설계.
+  - 지수 백오프 기반 `RetrySaveSystemDecorator` 설계 및 DI 바인딩.
+  - DTO 내부의 DateTime 파싱 캐싱 및 5종 재화 HUD 리액티브 동기화 연동.
 - **검증 방법**:
   - 유니티 테스트 러너(Unity Test Runner) EditMode 내 22종 유닛 테스트 및 PlayMode 내 6종 통합 시나리오 테스트(총 28종) 100% Passed 완료 검증.

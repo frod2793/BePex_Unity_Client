@@ -22,6 +22,9 @@
     *   디바이스 물리 I/O 없이 메모리 상의 `Dictionary`로만 데이터의 라이프사이클을 가상 유지하는 테스트 전용 대역 객체(Mock/Fake)입니다. 씬과 파일 독립적인 고속의 단위 테스트(EditMode)를 실행하는 데 활용됩니다.
 *   **`CloudSaveSystem` (확장 대비)**
     *   추후 원격 데이터베이스 또는 클라우드 서버 세이브 동기화 기능(예: Firebase Database, PlayFab 등)을 제공하기 위해 추상 설계된 구조체입니다.
+*   **`RetrySaveSystemDecorator` (Decorator 재시도 안전성)**
+    *   `ISaveSystem`을 구현하는 **데코레이터(Decorator) 패턴** 클래스입니다.
+    *   로컬/원격 저장 실패에 대비하여, 비동기 입출력 작업 실패 시 지수 백오프(Exponential Backoff) 알고리즘을 사용해 최대 3회 재시도를 보장하며 저장 안정성을 극대화합니다.
 
 ---
 
@@ -98,13 +101,13 @@
 2.  디바이스 저장 디렉토리 존재 여부를 확인하고 없으면 신설합니다.
 3.  `File.WriteAllTextAsync(path, json)`를 호출하여 비동기 스레드 풀에서 디스크 쓰기를 수행합니다.
 ```csharp
-public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress)
+public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress, CancellationToken cancellationToken = default)
 {
     string path = GetProgressPath(eventId);
     string json = JsonUtility.ToJson(progress, true);
     
-    // 비동기 디스크 쓰기 실행
-    await File.WriteAllTextAsync(path, json);
+    // 비동기 디스크 쓰기 실행 (취소 토큰 전파)
+    await File.WriteAllTextAsync(path, json, cancellationToken);
 }
 ```
 
@@ -113,7 +116,7 @@ public async Awaitable SaveProgressAsync(string eventId, EventProgressModel prog
 2.  파일이 없는 경우 신규 유저로 판정하고 빈 데이터 모델(`new EventProgressModel()`)을 새로 생성하여 리턴합니다.
 3.  파일이 존재할 경우 `File.ReadAllTextAsync(path)`를 실행해 비동기로 파일 스트림을 버퍼에 올린 뒤 `JsonUtility.FromJson<T>`을 활용하여 물리 객체 데이터로 역직렬화 복원합니다.
 ```csharp
-public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId)
+public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
 {
     string path = GetProgressPath(eventId);
     if (!File.Exists(path))
@@ -121,8 +124,8 @@ public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId)
         return new EventProgressModel { eventId = eventId, quests = new List<QuestProgressModel>() };
     }
 
-    // 비동기 파일 읽기 실행
-    string json = await File.ReadAllTextAsync(path);
+    // 비동기 파일 읽기 실행 (취소 토큰 전파)
+    string json = await File.ReadAllTextAsync(path, cancellationToken);
     return JsonUtility.FromJson<EventProgressModel>(json);
 }
 ```
@@ -206,7 +209,7 @@ sequenceDiagram
     *   캐싱(Caching) 및 성능 최적화 관심사는 `CachedSaveSystem`에, 단순 디스크 입출력(File System) 관심사는 `JsonSaveSystem`에 각각 완벽히 분리되어 있어 객체당 단일 책임(SRP)을 엄수합니다.
     *   기존 디스크 입출력 코드에 단 한 줄의 수정도 가하지 않고 최적화 기능을 유연하게 켜고 끌 수 있는 OCP(Open-Closed Principle) 구조를 보장합니다.
 *   **다형성을 통한 백엔드 다원화**:
-    *   컴포지션 루트(`EventSceneInitializer`)에서 DI 주입 시 `ISaveSystem` 인터페이스에 대해 `CachedSaveSystem(new JsonSaveSystem())`을 주입하는 형태로 조립됩니다.
+    *   컴포지션 루트(`EventSceneInitializer`)에서 DI 주입 시 `ISaveSystem` 인터페이스에 대해 `CachedSaveSystem(new RetrySaveSystemDecorator(new JsonSaveSystem()))`을 주입하는 형태로 조립됩니다.
     *   추후 서버 SDK 연동이 필요할 시 `CloudSaveSystem` 또는 새로운 `ISaveSystem` 구현체 어댑터를 생성하여 주입 관계만 교체하면 클라이언트 전반의 세이브 아키텍처는 고스란히 재사용됩니다.
 
 ---

@@ -2,6 +2,8 @@ using System.IO;
 using UnityEngine;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.Models;
+using System.Threading;
+using Newtonsoft.Json;
 
 namespace BePex.EventSystem.Infrastructure
 {
@@ -37,12 +39,13 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 특정 이벤트 ID에 해당하는 진행도 모델을 파일에서 비동기로 로드합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId)
+        public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string path = Path.Combine(m_saveDir, $"event_progress_{eventId}.json");
             if (File.Exists(path) == false)
             {
@@ -50,25 +53,29 @@ namespace BePex.EventSystem.Infrastructure
             }
             
             await Awaitable.BackgroundThreadAsync(); // 파일 I/O 스레드 전환
+            cancellationToken.ThrowIfCancellationRequested();
             string json = File.ReadAllText(path);
             await Awaitable.MainThreadAsync();       // 메인 스레드 복귀
+            cancellationToken.ThrowIfCancellationRequested();
             
-            return JsonUtility.FromJson<EventProgressModel>(json);
+            return JsonConvert.DeserializeObject<EventProgressModel>(json);
         }
 
         /// <summary>
         /// [기능]: 특정 이벤트의 진행 상태 정보를 JSON 포맷으로 비동기 저장합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress)
+        public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string path = Path.Combine(m_saveDir, $"event_progress_{eventId}.json");
-            string json = JsonUtility.ToJson(progress, true);
+            string json = JsonConvert.SerializeObject(progress, Formatting.Indented);
             
             await Awaitable.BackgroundThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(path, json);
             await Awaitable.MainThreadAsync();
         }
@@ -76,12 +83,13 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 플레이어의 누적 보상 데이터 정보를 비동기로 로드합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<PlayerRewardModel> LoadRewardStateAsync()
+        public async Awaitable<PlayerRewardModel> LoadRewardStateAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string path = Path.Combine(m_saveDir, "player_rewards.json");
             if (File.Exists(path) == false)
             {
@@ -89,25 +97,29 @@ namespace BePex.EventSystem.Infrastructure
             }
             
             await Awaitable.BackgroundThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             string json = File.ReadAllText(path);
             await Awaitable.MainThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             
-            return JsonUtility.FromJson<PlayerRewardModel>(json);
+            return JsonConvert.DeserializeObject<PlayerRewardModel>(json);
         }
 
         /// <summary>
         /// [기능]: 플레이어의 누적 보상 현황을 JSON 포맷으로 비동기 저장합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState)
+        public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string path = Path.Combine(m_saveDir, "player_rewards.json");
-            string json = JsonUtility.ToJson(rewardState, true);
+            string json = JsonConvert.SerializeObject(rewardState, Formatting.Indented);
             
             await Awaitable.BackgroundThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(path, json);
             await Awaitable.MainThreadAsync();
         }
@@ -115,13 +127,15 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: save 디렉토리 하위의 모든 세이브 파일을 비동기로 완전 삭제합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable ClearAllAsync()
+        public async Awaitable ClearAllAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.BackgroundThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             if (Directory.Exists(m_saveDir))
             {
                 string[] files = Directory.GetFiles(m_saveDir);
@@ -138,17 +152,19 @@ namespace BePex.EventSystem.Infrastructure
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 구현 및 Allman Style 준수
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState)
+        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string progressPath = Path.Combine(m_saveDir, $"event_progress_{eventId}.json");
-            string progressJson = JsonUtility.ToJson(progress, true);
+            string progressJson = JsonConvert.SerializeObject(progress, Formatting.Indented);
 
             string rewardPath = Path.Combine(m_saveDir, "player_rewards.json");
-            string rewardJson = JsonUtility.ToJson(rewardState, true);
+            string rewardJson = JsonConvert.SerializeObject(rewardState, Formatting.Indented);
 
             await Awaitable.BackgroundThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(progressPath, progressJson);
             File.WriteAllText(rewardPath, rewardJson);
             await Awaitable.MainThreadAsync();

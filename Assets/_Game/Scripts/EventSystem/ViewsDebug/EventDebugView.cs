@@ -186,11 +186,11 @@ namespace BePex.EventSystem.ViewsDebug
         /// [기능]: +1일 시간 경과 버튼 이벤트 핸들러입니다.
         /// [작성자]: 윤승종
         /// </summary>
-        public void func_OnAddOneDayClick()
+        public async void func_OnAddOneDayClick()
         {
             if (m_viewModel != null)
             {
-                m_viewModel.SimulateTimeOffset(1);
+                await m_viewModel.SimulateTimeOffsetAsync(1);
                 RefreshDynamicUI();
             }
         }
@@ -199,11 +199,11 @@ namespace BePex.EventSystem.ViewsDebug
         /// [기능]: +7일 시간 경과 버튼 이벤트 핸들러입니다.
         /// [작성자]: 윤승종
         /// </summary>
-        public void func_OnAddSevenDaysClick()
+        public async void func_OnAddSevenDaysClick()
         {
             if (m_viewModel != null)
             {
-                m_viewModel.SimulateTimeOffset(7);
+                await m_viewModel.SimulateTimeOffsetAsync(7);
                 RefreshDynamicUI();
             }
         }
@@ -462,6 +462,152 @@ namespace BePex.EventSystem.ViewsDebug
                     }
                 }
             }
+
+            #region 재화 소모 모의 트리거 동적 렌더링
+            if (m_actionButtonPrefab != null)
+            {
+                if (m_rewardStatusTextPrefab != null)
+                {
+                    var spaceText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    spaceText.text = "";
+                    m_spawnedItems.Add(spaceText.gameObject);
+
+                    var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    titleText.text = "--- [재화 소모 모의 트리거] ---";
+                    titleText.alignment = TextAlignmentOptions.Center;
+                    m_spawnedItems.Add(titleText.gameObject);
+                }
+
+                // Grid Container 동적 생성
+                var gridGo = new GameObject("SpendGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+                gridGo.transform.SetParent(m_contentParent, false);
+                m_spawnedItems.Add(gridGo);
+
+                var grid = gridGo.GetComponent<GridLayoutGroup>();
+                grid.cellSize = new Vector2(195f, 50f);
+                grid.spacing = new Vector2(10f, 10f);
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = 2;
+                grid.childAlignment = TextAnchor.UpperLeft;
+
+                var fitter = gridGo.GetComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                Transform spendTargetParent = gridGo.transform;
+
+                // 1. Point 소모
+                var spendPointBtn = Instantiate(m_actionButtonPrefab, spendTargetParent);
+                var spendPointTxt = spendPointBtn.GetComponentInChildren<TextMeshProUGUI>();
+                if (spendPointTxt != null)
+                {
+                    spendPointTxt.text = "Point -10 소모";
+                    spendPointTxt.fontSize = 14f;
+                }
+                spendPointBtn.onClick.AddListener(async () =>
+                {
+                    await m_viewModel.SimulateSpendPointsAsync(10);
+                    if (this == null)
+                    {
+                        return;
+                    }
+                    RefreshDynamicUI();
+                });
+                m_spawnedItems.Add(spendPointBtn.gameObject);
+
+                // 2. SeasonPoint 소모
+                var spendSeasonBtn = Instantiate(m_actionButtonPrefab, spendTargetParent);
+                var spendSeasonTxt = spendSeasonBtn.GetComponentInChildren<TextMeshProUGUI>();
+                if (spendSeasonTxt != null)
+                {
+                    spendSeasonTxt.text = "SeasonPoint -5 소모";
+                    spendSeasonTxt.fontSize = 14f;
+                }
+                spendSeasonBtn.onClick.AddListener(async () =>
+                {
+                    await m_viewModel.SimulateSpendSeasonPointsAsync(5);
+                    if (this == null)
+                    {
+                        return;
+                    }
+                    RefreshDynamicUI();
+                });
+                m_spawnedItems.Add(spendSeasonBtn.gameObject);
+
+                // 3. Credit 소모
+                var spendCreditBtn = Instantiate(m_actionButtonPrefab, spendTargetParent);
+                var spendCreditTxt = spendCreditBtn.GetComponentInChildren<TextMeshProUGUI>();
+                if (spendCreditTxt != null)
+                {
+                    spendCreditTxt.text = "Credit -10 소모";
+                    spendCreditTxt.fontSize = 14f;
+                }
+                spendCreditBtn.onClick.AddListener(async () =>
+                {
+                    await m_viewModel.SimulateSpendCreditsAsync(10);
+                    if (this == null)
+                    {
+                        return;
+                    }
+                    RefreshDynamicUI();
+                });
+                m_spawnedItems.Add(spendCreditBtn.gameObject);
+            }
+            #endregion
+
+            #region 세이브 데이터 전체 초기화 동적 렌더링
+            if (m_actionButtonPrefab != null)
+            {
+                if (m_rewardStatusTextPrefab != null)
+                {
+                    var spaceText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    spaceText.text = "";
+                    m_spawnedItems.Add(spaceText.gameObject);
+
+                    var titleText = Instantiate(m_rewardStatusTextPrefab, m_contentParent);
+                    titleText.text = "--- [세이브 데이터 관리] ---";
+                    titleText.alignment = TextAlignmentOptions.Center;
+                    m_spawnedItems.Add(titleText.gameObject);
+                }
+
+                // Grid Container 동적 생성
+                var gridGo = new GameObject("ResetGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+                gridGo.transform.SetParent(m_contentParent, false);
+                m_spawnedItems.Add(gridGo);
+
+                var grid = gridGo.GetComponent<GridLayoutGroup>();
+                grid.cellSize = new Vector2(400f, 50f);
+                grid.spacing = new Vector2(10f, 10f);
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = 1;
+                grid.childAlignment = TextAnchor.MiddleCenter;
+
+                var fitter = gridGo.GetComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                Transform resetTargetParent = gridGo.transform;
+
+                var resetDataBtn = Instantiate(m_actionButtonPrefab, resetTargetParent);
+                var resetDataTxt = resetDataBtn.GetComponentInChildren<TextMeshProUGUI>();
+                if (resetDataTxt != null)
+                {
+                    resetDataTxt.text = "세이브 데이터 전체 초기화";
+                    resetDataTxt.color = Color.red;
+                    resetDataTxt.fontSize = 14f;
+                }
+                resetDataBtn.onClick.AddListener(async () =>
+                {
+                    await m_viewModel.ResetAllDataAsync();
+                    if (this == null)
+                    {
+                        return;
+                    }
+                    RefreshDynamicUI();
+                });
+                m_spawnedItems.Add(resetDataBtn.gameObject);
+            }
+            #endregion
         }
         #endregion
     }

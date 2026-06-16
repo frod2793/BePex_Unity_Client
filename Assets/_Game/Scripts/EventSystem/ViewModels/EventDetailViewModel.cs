@@ -116,12 +116,9 @@ namespace BePex.EventSystem.ViewModels
                 return false;
             }
 
-            for (int i = 0; i < progress.quests.Count; i++)
+            if (progress.TryGetQuestProgress(questId, out var qp))
             {
-                if (progress.quests[i].questId == questId)
-                {
-                    return progress.quests[i].isRewardClaimed;
-                }
+                return qp.isRewardClaimed;
             }
             return false;
         }

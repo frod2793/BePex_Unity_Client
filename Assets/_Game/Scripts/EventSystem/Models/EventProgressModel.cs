@@ -59,5 +59,30 @@ namespace BePex.EventSystem.Models
             quests = new List<QuestProgressModel>();
         }
         #endregion
+
+        #region 공개 메서드
+        /// <summary>
+        /// [기능]: 지정한 questId에 해당하는 하위 퀘스트 진행도 데이터가 존재하는지 찾아 반환합니다.
+        /// [작성자]: 윤승종
+        /// </summary>
+        public bool TryGetQuestProgress(string questId, out QuestProgressModel questProgress)
+        {
+            questProgress = null;
+            if (quests == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < quests.Count; i++)
+            {
+                if (quests[i] != null && quests[i].questId == questId)
+                {
+                    questProgress = quests[i];
+                    return true;
+                }
+            }
+            return false;
+        }
+        #endregion
     }
 }

@@ -52,12 +52,9 @@ namespace BePex.EventSystem.Conditions
                 return 0;
             }
 
-            for (int i = 0; i < progress.quests.Count; i++)
+            if (progress.TryGetQuestProgress(m_questId, out var qp))
             {
-                if (progress.quests[i].questId == m_questId)
-                {
-                    return progress.quests[i].currentProgress;
-                }
+                return qp.currentProgress;
             }
 
             return 0;
@@ -90,12 +87,9 @@ namespace BePex.EventSystem.Conditions
                 return false;
             }
 
-            for (int i = 0; i < progress.quests.Count; i++)
+            if (progress.TryGetQuestProgress(m_questId, out var qp))
             {
-                if (progress.quests[i].questId == m_questId)
-                {
-                    return progress.quests[i].isCompleted;
-                }
+                return qp.isCompleted;
             }
 
             int currentProgress = await GetCurrentProgressAsync();

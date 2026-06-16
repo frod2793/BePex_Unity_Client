@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using BePex.EventSystem.ViewModels;
 using TMPro;
+using System.Threading;
 
 namespace BePex.EventSystem.Views
 {
@@ -21,6 +22,8 @@ namespace BePex.EventSystem.Views
 
         #region 내부 필드
         private RewardPopupViewModel m_viewModel;
+        private EventDetailViewModel m_detailViewModel;
+        private CancellationTokenSource m_cts;
         #endregion
 
         #region 공개 메서드
@@ -34,15 +37,17 @@ namespace BePex.EventSystem.Views
         public void Bind(RewardPopupViewModel viewModel, EventDetailViewModel detailViewModel)
         {
             m_viewModel = viewModel;
+            m_detailViewModel = detailViewModel;
+            m_cts = new CancellationTokenSource();
 
             if (m_viewModel != null)
             {
                 m_viewModel.OnRewardDataChanged += func_OnRewardDataChanged;
             }
 
-            if (detailViewModel != null)
+            if (m_detailViewModel != null)
             {
-                detailViewModel.OnRewardClaimSuccess += func_OnShowPopup;
+                m_detailViewModel.OnRewardClaimSuccess += func_OnShowPopup;
             }
 
             if (m_closeButton != null)
@@ -71,6 +76,18 @@ namespace BePex.EventSystem.Views
             if (m_viewModel != null)
             {
                 m_viewModel.OnRewardDataChanged -= func_OnRewardDataChanged;
+            }
+
+            if (m_detailViewModel != null)
+            {
+                m_detailViewModel.OnRewardClaimSuccess -= func_OnShowPopup;
+            }
+
+            if (m_cts != null)
+            {
+                m_cts.Cancel();
+                m_cts.Dispose();
+                m_cts = null;
             }
         }
         #endregion

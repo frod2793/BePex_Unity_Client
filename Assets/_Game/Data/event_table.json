@@ -217,6 +217,50 @@
                     "rewards": []
                 }
             ]
+        },
+        {
+            "eventId": "evt_new_639172121146804550",
+            "eventTitle": "비펙스 화이팅",
+            "eventDescription": "킬수 복수 등록",
+            "eventIconAddress": "item_Sheet[item_Sheet_11]",
+            "startDate": "2026-06-16",
+            "endDate": "2026-06-23",
+            "quests": [
+                {
+                    "questId": "quest_evt_new_639172121146804550_1",
+                    "questTitle": "기본 퀘스트",
+                    "questDescription": "적을 처치하세요.",
+                    "condition": {
+                        "conditionType": "KillCount",
+                        "targetValue": 10
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "SeasonPoint",
+                            "amount": 100,
+                            "displayName": "시즌 포인트",
+                            "iconAddress": "item_Sheet[item_Sheet_10]"
+                        }
+                    ]
+                },
+                {
+                    "questId": "quest_639172121637741110",
+                    "questTitle": "킬하세욤",
+                    "questDescription": "퀘스트 설명을 입력하세요.",
+                    "condition": {
+                        "conditionType": "KillCount",
+                        "targetValue": 15
+                    },
+                    "rewards": [
+                        {
+                            "rewardType": "CreditReword",
+                            "amount": 100,
+                            "displayName": "재화 보상",
+                            "iconAddress": "item_Sheet[item_Sheet_0]"
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }

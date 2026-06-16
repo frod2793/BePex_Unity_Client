@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using BePex.EventSystem.ViewModels;
+using System.Threading;
 
 namespace BePex.EventSystem.Views
 {
@@ -20,6 +21,7 @@ namespace BePex.EventSystem.Views
         #region 내부 필드
         private EventListViewModel m_viewModel;
         private readonly List<EventItemCell> m_spawnedCells = new List<EventItemCell>();
+        private CancellationTokenSource m_cts;
         #endregion
 
         #region 공개 메서드
@@ -43,18 +45,30 @@ namespace BePex.EventSystem.Views
         #endregion
 
         #region 유니티 생명주기
+        private void Awake()
+        {
+            m_cts = new CancellationTokenSource();
+        }
+
         /// <summary>
         /// [기능]: 리스트 뷰 오브젝트 소멸 시 뷰모델 데이터 변경 리스너를 일제히 구독 해제합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: XML 주석 보완
+        /// [수정 내용]: CancellationTokenSource 정리 추가
         /// </summary>
         private void OnDestroy()
         {
             if (m_viewModel != null)
             {
                 m_viewModel.OnListUpdated -= func_OnListUpdated;
+            }
+
+            if (m_cts != null)
+            {
+                m_cts.Cancel();
+                m_cts.Dispose();
+                m_cts = null;
             }
         }
         #endregion

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using BePex.EventSystem.Interfaces;
 using BePex.EventSystem.Models;
+using System.Threading;
 
 namespace BePex.EventSystem.Infrastructure
 {
@@ -20,30 +21,34 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 메모리 맵 객체로부터 진행 정보를 꺼내어 반환합니다. 데이터가 없으면 새로 생성해 세팅합니다. (비동기 시뮬레이션)
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId)
+        public async Awaitable<EventProgressModel> LoadProgressAsync(string eventId, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.BackgroundThreadAsync(); // 모의 비동기 대기
+            cancellationToken.ThrowIfCancellationRequested();
             if (m_progressMap.ContainsKey(eventId) == false)
             {
                 m_progressMap[eventId] = new EventProgressModel { eventId = eventId };
             }
             await Awaitable.MainThreadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             return m_progressMap[eventId];
         }
 
         /// <summary>
         /// [기능]: 메모리 맵의 진행 상태 정보를 갱신하여 덮어씁니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress)
+        public async Awaitable SaveProgressAsync(string eventId, EventProgressModel progress, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.MainThreadAsync();
             m_progressMap[eventId] = progress;
         }
@@ -51,12 +56,13 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 메모리에 보관된 모의 누적 보상 현황을 로드합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable<PlayerRewardModel> LoadRewardStateAsync()
+        public async Awaitable<PlayerRewardModel> LoadRewardStateAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.MainThreadAsync();
             return m_rewardState;
         }
@@ -64,12 +70,13 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 메모리에 모의 누적 보상 현황을 갱신합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState)
+        public async Awaitable SaveRewardStateAsync(PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.MainThreadAsync();
             m_rewardState = rewardState;
         }
@@ -77,12 +84,13 @@ namespace BePex.EventSystem.Infrastructure
         /// <summary>
         /// [기능]: 인메모리에 할당된 모든 사전 정보와 보상 적립 상태를 리셋하여 초기화합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: Awaitable 비동기 인터페이스로 갱신
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable ClearAllAsync()
+        public async Awaitable ClearAllAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.MainThreadAsync();
             m_progressMap.Clear();
             m_rewardState = new PlayerRewardModel();
@@ -93,10 +101,11 @@ namespace BePex.EventSystem.Infrastructure
         /// [작성자]: 윤승종
         /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 구현
+        /// [수정 내용]: 취소 제어를 위한 CancellationToken 추가
         /// </summary>
-        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState)
+        public async Awaitable SaveBatchAsync(string eventId, EventProgressModel progress, PlayerRewardModel rewardState, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Awaitable.MainThreadAsync();
             m_progressMap[eventId] = progress;
             m_rewardState = rewardState;

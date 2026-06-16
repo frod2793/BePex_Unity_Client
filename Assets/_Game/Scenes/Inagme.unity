@@ -4163,6 +4163,8 @@ MonoBehaviour:
   m_goldText: {fileID: 892550402}
   m_expText: {fileID: 862251371}
   m_ticketText: {fileID: 650282090}
+  m_seasonPointText: {fileID: 0}
+  m_creditText: {fileID: 0}
 --- !u!114 &1111461237
 MonoBehaviour:
   m_ObjectHideFlags: 0

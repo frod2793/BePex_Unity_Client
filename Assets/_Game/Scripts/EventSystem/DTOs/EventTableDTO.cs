@@ -30,6 +30,9 @@ namespace BePex.EventSystem.DTOs
     /// <summary>
     /// [기능]: 개별 이벤트 기획 메타데이터 정보를 직렬화하기 위한 데이터 전송 객체(DTO).
     /// [작성자]: 윤승종
+    /// [수정 날짜]: 2026-06-16
+    /// [마지막 수정 작성자]: 윤승종
+    /// [수정 내용]: 날짜 파싱 캐싱 필드 및 헬퍼 추가로 성능 최적화
     /// </summary>
     [Serializable]
     public class EventDefinitionDTO
@@ -41,6 +44,45 @@ namespace BePex.EventSystem.DTOs
         public string startDate;
         public string endDate;
         public List<QuestDefinitionDTO> quests = new List<QuestDefinitionDTO>();
+
+        [NonSerialized] private DateTime? m_cachedStartDateTime;
+        [NonSerialized] private DateTime? m_cachedEndDateTime;
+        [NonSerialized] private bool m_isStartParsed = false;
+        [NonSerialized] private bool m_isEndParsed = false;
+
+        public DateTime? GetStartDateTime()
+        {
+            if (m_isStartParsed == false)
+            {
+                if (DateTime.TryParse(startDate, out DateTime startDt))
+                {
+                    m_cachedStartDateTime = startDt;
+                }
+                else
+                {
+                    m_cachedStartDateTime = null;
+                }
+                m_isStartParsed = true;
+            }
+            return m_cachedStartDateTime;
+        }
+
+        public DateTime? GetEndDateTime()
+        {
+            if (m_isEndParsed == false)
+            {
+                if (DateTime.TryParse(endDate, out DateTime endDt))
+                {
+                    m_cachedEndDateTime = endDt;
+                }
+                else
+                {
+                    m_cachedEndDateTime = null;
+                }
+                m_isEndParsed = true;
+            }
+            return m_cachedEndDateTime;
+        }
     }
 
     /// <summary>

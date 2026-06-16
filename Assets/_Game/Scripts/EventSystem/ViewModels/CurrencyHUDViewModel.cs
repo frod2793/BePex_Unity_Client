@@ -21,6 +21,8 @@ namespace BePex.EventSystem.ViewModels
         public int TotalExp => m_playerReward != null ? m_playerReward.totalExp : 0;
         public int TotalTickets => m_playerReward != null ? m_playerReward.totalTickets : 0;
         public int TotalPoints => m_playerReward != null ? m_playerReward.totalPoints : 0;
+        public int TotalSeasonPoints => m_playerReward != null ? m_playerReward.totalSeasonPoints : 0;
+        public int TotalCredits => m_playerReward != null ? m_playerReward.totalCredits : 0;
         #endregion
 
         #region 초기화

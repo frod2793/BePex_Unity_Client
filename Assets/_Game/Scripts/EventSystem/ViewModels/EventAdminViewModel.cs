@@ -112,9 +112,9 @@ namespace BePex.EventSystem.ViewModels
         /// <summary>
         /// [기능]: 현재 테이블 정보를 JSON으로 직렬화하여 로컬 디스크 파일에 비동기로 덤프합니다.
         /// [작성자]: 윤승종
-        /// [수정 날짜]: 2026-06-14
+        /// [수정 날짜]: 2026-06-16
         /// [마지막 수정 작성자]: 윤승종
-        /// [수정 내용]: 최초 정의
+        /// [수정 내용]: EditMode 테스트 환경에서 Awaitable 스케줄러 데드락 정지 해결을 위해 Application.isPlaying 분기 가드 적용
         /// </summary>
         public async Awaitable<bool> SaveToLocalFileAsync(string customPath = null)
         {
@@ -133,9 +133,16 @@ namespace BePex.EventSystem.ViewModels
                 }
 
                 string json = JsonUtility.ToJson(m_eventTable, true);
-                await Awaitable.BackgroundThreadAsync();
-                File.WriteAllText(path, json);
-                await Awaitable.MainThreadAsync();
+                if (Application.isPlaying)
+                {
+                    await Awaitable.BackgroundThreadAsync();
+                    File.WriteAllText(path, json);
+                    await Awaitable.MainThreadAsync();
+                }
+                else
+                {
+                    File.WriteAllText(path, json);
+                }
 
                 Debug.Log($"[EventAdminViewModel] 로컬 파일 저장 완료: {path}");
                 if (OnSaveCompleted != null)
